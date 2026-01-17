@@ -185,7 +185,7 @@ async function loadMemoPresets() {
     const presetContainer = document.getElementById('memo-presets-container');
     if (!presetContainer) return;
     try {
-        const records = await pb.collection('memo_presets').getFullList({ sort: 'content' });
+        const records = await pb.collection('memo_presets').getFullList({ sort: 'content', '$autoCancel': false });
 
         // 去重處理
         const uniqueMemos = [...new Set(records.map(r => r.content.trim()))];
@@ -256,7 +256,7 @@ let itemDictionary = [];
 async function updateItemsDatalist() {
     const datalist = document.getElementById('items-datalist');
     try {
-        const records = await pb.collection('items').getFullList({ sort: 'name' });
+        const records = await pb.collection('items').getFullList({ sort: 'name', '$autoCancel': false });
         itemDictionary = records.map(r => r.name);
         datalist.innerHTML = '';
         records.forEach(r => {
@@ -306,7 +306,7 @@ async function loadItemPresets() {
 
 window.addItemFromPreset = async function (id) {
     try {
-        const item = await pb.collection('items').getOne(id);
+        const item = await pb.collection('items').getOne(id, { '$autoCancel': false });
         const tr = createRow();
         tr.querySelector('.item-name').value = item.name;
         tr.querySelector('.item-unit').value = item.unit || '式';
@@ -372,6 +372,8 @@ window.saveQuotation = async function (isCopy = false) {
         formData.append('items', JSON.stringify(items));
         formData.append('memo_html', memoHtml);
         formData.append('vendor', vendorSelect.value);
+        // 新增自定義時間欄位，解決系統 updated 欄位無法顯示的問題
+        formData.append('last_updated', new Date().toISOString());
 
         // 取得 image-upload 中的真實 File 物件 (注意：此前的 uploadedImages 是 DataURL，我們要改用原始檔案)
         const fileInput = document.getElementById('image-upload-files') || { files: [] }; // 假設我們調整 HTML 使用隱藏 input 存檔案
@@ -388,6 +390,7 @@ window.saveQuotation = async function (isCopy = false) {
             record = await pb.collection('quotations').create(formData, { '$autoCancel': false });
         }
 
+        console.log('儲存成功，回傳紀錄內容:', record);
         currentQuotationId = record.id; // 儲存後標記為正在編輯此單
 
         // 解析補充說明並自動同步到 memo_presets (重複檢查)
@@ -478,6 +481,11 @@ async function loadHistory() {
             }
         }
 
+        if (records.items.length > 0) {
+            console.log('歷史紀錄欄位清單 (請確認是否有 last_updated):', Object.keys(records.items[0]));
+            console.log('第一個紀錄範例:', records.items[0]);
+        }
+
         historyBody.innerHTML = '';
         if (records.items.length === 0) {
             historyBody.innerHTML = '<tr><td colspan="6" class="text-center">查無紀錄</td></tr>';
@@ -490,7 +498,10 @@ async function loadHistory() {
             // 安全處理日期與顯示
             const displayDate = q.date ? q.date.substring(0, 10) : (q.created ? q.created.substring(0, 10) : '---');
             const displayTotal = q.total ? q.total.toLocaleString() : '0';
-            const displayUpdated = q.updated ? q.updated.substring(0, 16).replace('T', ' ') : '---';
+
+            // 優先使用自定義的 last_updated，其次是系統 updated，最後是 created
+            const rawUpdated = q.last_updated || q.updated || q.created;
+            const displayUpdated = rawUpdated ? rawUpdated.substring(0, 16).replace('T', ' ') : '---';
 
             tr.innerHTML = `
                 <td>${q.quo_number || '---'}</td>
@@ -554,21 +565,36 @@ window.deleteQuotation = async function (id) {
 };
 
 window.editQuotation = async function (id) {
+    console.log('正在嘗試載入報價單 ID:', id);
     try {
-        const q = await pb.collection('quotations').getOne(id);
+        const q = await pb.collection('quotations').getOne(id, { '$autoCancel': false });
+        console.log('取得報價單原始資料:', q);
         currentQuotationId = q.id; // 標記正在編輯此單
 
-        // 還原基本資訊
-        document.getElementById('quo-number').innerText = q.quo_number;
-        document.getElementById('c-name').innerText = q.customer_name || "";
-        document.getElementById('c-location').innerText = q.project_location || q.project_name || ""; // 相容不同欄位名
-        document.getElementById('c-contact').innerText = q.customer_contact || "王先生";
-        document.getElementById('c-phone').innerText = q.customer_phone || "0912-345-678";
+        // 還原基本資訊 (加入安全檢查)
+        const safeSetText = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = val || "";
+            else console.warn(`找不到元素: ${id}`);
+        };
+        const safeSetValue = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val || "";
+            else console.warn(`找不到元素: ${id}`);
+        };
+
+        safeSetText('quo-number', q.quo_number);
+        safeSetText('c-name', q.customer_name);
+        safeSetText('c-location', q.project_location || q.project_name);
+        safeSetText('c-contact', q.customer_contact || "王先生");
+        safeSetText('c-phone', q.customer_phone || "0912-345-678");
 
         const dateVal = q.date ? q.date.substring(0, 10) : "";
-        document.getElementById('c-date-input').value = dateVal;
-        document.getElementById('c-date-display').innerText = dateVal;
-        document.getElementById('memo-field').innerHTML = q.memo_html;
+        safeSetValue('c-date-input', dateVal);
+        safeSetText('c-date-display', dateVal);
+
+        const memoEl = document.getElementById('memo-field');
+        if (memoEl) memoEl.innerHTML = q.memo_html || "";
 
         // 還原品項
         itemsBody.innerHTML = '';
@@ -576,44 +602,53 @@ window.editQuotation = async function (id) {
         // 安全處理解析
         let items = q.items;
         if (typeof items === 'string') {
-            try { items = JSON.parse(items); } catch (err) { items = []; }
+            try { items = JSON.parse(items); } catch (err) {
+                console.error('解析 items JSON 失敗:', err);
+                items = [];
+            }
         }
         if (Array.isArray(items)) {
-            items.forEach(item => {
-                const tr = createRow();
-                tr.querySelector('.item-name').value = item.name || "";
-                tr.querySelector('.item-unit').value = item.unit || "式";
-                tr.querySelector('.item-qty').value = item.qty || 1;
-                tr.querySelector('.item-price').value = item.price || 0;
-                tr.querySelector('.item-note').value = item.note || '';
+            items.forEach((item, idx) => {
+                try {
+                    const tr = createRow();
+                    tr.querySelector('.item-name').value = item.name || "";
+                    tr.querySelector('.item-unit').value = item.unit || "式";
+                    tr.querySelector('.item-qty').value = item.qty || 1;
+                    tr.querySelector('.item-price').value = item.price || 0;
+                    tr.querySelector('.item-note').value = item.note || '';
+                } catch (rowErr) {
+                    console.error(`還原第 ${idx + 1} 列品項失敗:`, rowErr);
+                }
             });
         }
         calculateTotals();
 
         // 還原廠商
-        if (q.vendor) {
+        if (q.vendor && vendorSelect) {
             vendorSelect.value = q.vendor;
             vendorSelect.dispatchEvent(new Event('change'));
         }
 
         // 還原圖片 (相容 images 或 photos 欄位)
         uploadedImages = [];
-        selectedFiles = []; // 清空之前的檔案，編輯模式下若沒動則不傳新檔
+        selectedFiles = []; // 清空之前的檔案
         const imgs = q.images || q.photos || [];
         if (Array.isArray(imgs)) {
             imgs.forEach(img => {
                 const url = getFileUrl('quotations', q, img);
                 uploadedImages.push(url);
-                // 注意：這裡無法還原實體 File 物件，僅做顯示用
-                // 實務上若要保留原圖，PB 會自動處理沒傳遞 images 欄位時不更動原圖
             });
         }
         updateAttachmentLayout();
 
-        bootstrap.Modal.getInstance(document.getElementById('historyModal')).hide();
+        const historyModal = document.getElementById('historyModal');
+        if (historyModal) {
+            const modalInstance = bootstrap.Modal.getInstance(historyModal);
+            if (modalInstance) modalInstance.hide();
+        }
     } catch (e) {
-        console.error(e);
-        alert('載入報價單失敗');
+        console.error('載入報價單詳細錯誤:', e);
+        alert(`載入報價單失敗！\n錯誤原因：${e.message}\n\n請查看瀏覽器控制台 (F12) 以取得詳細資訊。`);
     }
 };
 
@@ -705,7 +740,7 @@ function setupDynamicSync() {
 
 async function renderVendors() {
     try {
-        const records = await pb.collection('vendors').getFullList({ sort: 'name' });
+        const records = await pb.collection('vendors').getFullList({ sort: 'name', '$autoCancel': false });
         vendors = records;
 
         vendorSelect.innerHTML = '<option value="">-- 請選擇廠商 --</option>';
@@ -889,7 +924,7 @@ async function checkViewMode() {
 
 async function loadQuotationForView(id) {
     try {
-        const q = await pb.collection('quotations').getOne(id, { expand: 'vendor' });
+        const q = await pb.collection('quotations').getOne(id, { expand: 'vendor', '$autoCancel': false });
 
         // 填充基本資訊
         document.getElementById('quo-number').innerText = q.quo_number;
