@@ -479,21 +479,18 @@ async function generateQuoNumber(selectedDate) {
     const day = String(dateObj.getDate()).padStart(2, '0');
     const datePart = `${year}${month}${day}`;
 
-    let sequence = "01";
-    // 修正過濾語法，確保符合 PocketBase 格式
-    // 如果 date 欄位有問題，這裡會報錯。我們改用更簡潔的寫法
-    const filter = `date >= "${selectedDate} 00:00:00"`;
+    // 使用精確的日期範圍過濾 (從當天 00:00 到 23:59)
+    const filter = `date >= "${selectedDate} 00:00:00" && date <= "${selectedDate} 23:59:59"`;
 
+    let sequence = "01";
     try {
         const todayRecords = await pb.collection('quotations').getList(1, 1, {
             filter: filter,
-            sort: '-id',
             $autoCancel: false
         });
         sequence = String(todayRecords.totalItems + 1).padStart(2, '0');
     } catch (e) {
-        console.warn("產生單號過濾失敗，嘗試不帶過濾查詢", e);
-        // 如果還是失敗，可能是欄位名稱不對，回傳預設序號避免崩潰
+        console.warn("產生單號過濾失敗", e);
         sequence = "01";
     }
 
