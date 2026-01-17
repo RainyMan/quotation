@@ -189,13 +189,14 @@ async function loadMemoPresets() {
         presetContainer.innerHTML = '';
         uniqueMemos.forEach((content, index) => {
             const div = document.createElement('div');
-            div.className = 'form-check mb-1 d-flex align-items-center justify-content-between';
+            // 使用自定義 flex 佈局避免 Bootstrap form-check 可能的邊距問題
+            div.className = 'd-flex align-items-center justify-content-between mb-2 p-1 border-bottom-dashed';
             div.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <input class="form-check-input memo-checkbox me-2" type="checkbox" value="${content}" id="memo-${index}">
-                    <label class="form-check-label small" for="memo-${index}">${content}</label>
+                <div class="d-flex align-items-center flex-grow-1">
+                    <input class="form-check-input memo-checkbox me-2 mt-0" type="checkbox" value="${content}" id="memo-${index}">
+                    <label class="form-check-label small cursor-pointer flex-grow-1 mb-0" for="memo-${index}">${content}</label>
                 </div>
-                <i class="bi bi-x-circle text-danger ms-2 cursor-pointer" onclick="deleteMemoPreset('${content}')" title="刪除此預設值"></i>
+                <i class="bi bi-x-circle text-danger ms-2 cursor-pointer" onclick="event.stopPropagation(); deleteMemoPreset('${content}')" title="刪除此預設值"></i>
             `;
             presetContainer.appendChild(div);
         });

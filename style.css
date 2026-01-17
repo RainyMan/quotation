@@ -45,6 +45,10 @@ body {
     background-color: rgba(0, 0, 0, 0.05) !important;
 }
 
+.cursor-pointer {
+    cursor: pointer;
+}
+
 /* Content Editable Styling */
 [contenteditable="true"] {
     outline: none;
