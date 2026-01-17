@@ -343,9 +343,21 @@ async function loadHistory() {
     try {
         // 優化搜尋字串，如果欄位不存在，getList 會噴 400
         let filterStr = '';
+        const filters = [];
         if (customerSearch) {
-            filterStr = `(customer_name ~ "${customerSearch}" || project_name ~ "${customerSearch}" || project_location ~ "${customerSearch}")`;
+            filters.push(`(customer_name ~ "${customerSearch}" || project_name ~ "${customerSearch}" || project_location ~ "${customerSearch}")`);
         }
+
+        const dateStart = document.getElementById('history-start').value;
+        const dateEnd = document.getElementById('history-end').value;
+        if (dateStart) {
+            filters.push(`date >= "${dateStart} 00:00:00"`);
+        }
+        if (dateEnd) {
+            filters.push(`date <= "${dateEnd} 23:59:59"`);
+        }
+
+        filterStr = filters.join(' && ');
 
         const options = {
             sort: '-id',

@@ -240,7 +240,7 @@ body {
 /* Signature Pad & Online Signature Display */
 #sig-client-display {
     border-radius: 8px;
-    background: rgba(0, 0, 0, 0.02);
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
