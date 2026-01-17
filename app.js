@@ -352,11 +352,15 @@ async function loadHistory() {
 
         records.items.forEach(q => {
             const tr = document.createElement('tr');
+            // 安全處理日期與顯示
+            const displayDate = q.date ? q.date.substring(0, 10) : (q.created ? q.created.substring(0, 10) : '---');
+            const displayTotal = q.total ? q.total.toLocaleString() : '0';
+
             tr.innerHTML = `
-                <td>${q.quo_number}</td>
-                <td>${q.date.substring(0, 10)}</td>
-                <td>${q.customer_name}</td>
-                <td>NT$ ${q.total.toLocaleString()}</td>
+                <td>${q.quo_number || '---'}</td>
+                <td>${displayDate}</td>
+                <td>${q.customer_name || '未命名客戶'}</td>
+                <td>NT$ ${displayTotal}</td>
                 <td><span class="badge bg-primary">已儲存</span></td>
                 <td>
                     <div class="btn-group btn-group-sm">
@@ -390,10 +394,12 @@ window.editQuotation = async function (id) {
 
         // 還原基本資訊
         document.getElementById('quo-number').innerText = q.quo_number;
-        document.getElementById('c-name').innerText = q.customer_name;
+        document.getElementById('c-name').innerText = q.customer_name || "";
         document.getElementById('c-location').innerText = q.project_location || q.project_name || ""; // 相容不同欄位名
-        document.getElementById('c-date-input').value = q.date.substring(0, 10);
-        document.getElementById('c-date-display').innerText = q.date.substring(0, 10);
+
+        const dateVal = q.date ? q.date.substring(0, 10) : "";
+        document.getElementById('c-date-input').value = dateVal;
+        document.getElementById('c-date-display').innerText = dateVal;
         document.getElementById('memo-field').innerHTML = q.memo_html;
 
         // 還原品項
