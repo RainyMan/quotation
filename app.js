@@ -438,7 +438,8 @@ async function loadHistory() {
         if (customerSearch) {
             // 注意：若資料庫缺少欄位，此過濾語法會導致 400 錯誤。
             // 建議使用者確認欄位是否存在，或暫時縮減過濾範圍。
-            filters.push(`(customer_name ~ "${customerSearch}" || project_name ~ "${customerSearch}")`);
+            // 同時搜尋 customer_name 與 project_name / project_location
+            filters.push(`(customer_name ~ "${customerSearch}" || project_name ~ "${customerSearch}" || project_location ~ "${customerSearch}")`);
         }
 
         const dateStart = document.getElementById('history-start').value;
@@ -461,7 +462,21 @@ async function loadHistory() {
         };
         if (filterStr) options.filter = filterStr;
 
-        const records = await pb.collection('quotations').getList(1, 50, options);
+        console.log('正在讀取歷史紀錄...', { options });
+
+        let records;
+        try {
+            records = await pb.collection('quotations').getList(1, 50, options);
+        } catch (err) {
+            // 如果帶排序失敗，嘗試不帶排序 (處理可能不存在的欄位)
+            if (err.status === 400 && options.sort) {
+                console.warn('帶排序讀取失敗，嘗試不帶排序...', err);
+                delete options.sort;
+                records = await pb.collection('quotations').getList(1, 50, options);
+            } else {
+                throw err;
+            }
+        }
 
         historyBody.innerHTML = '';
         if (records.items.length === 0) {
@@ -498,7 +513,9 @@ async function loadHistory() {
     } catch (e) {
         console.error('歷史讀取失敗詳細資訊:', e);
         const detail = e.data?.message || e.message;
-        alert(`讀取歷史紀錄失敗！\n錯誤原因：${detail}\n\n這通常是欄位名稱不符或是 PocketBase API Rules 未開放讀取權限。`);
+        const errorData = e.data?.data ? JSON.stringify(e.data.data) : '';
+
+        alert(`讀取歷史紀錄失敗！\n錯誤原因：${detail}\n${errorData}\n\n這通常是：\n1. 欄位名稱不符 (例如少了 customer_name)\n2. PocketBase API Rules 未開放 List 讀取權限\n3. 過濾語法錯誤`);
         historyBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">讀取失敗</td></tr>';
     }
 }
