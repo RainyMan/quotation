@@ -479,8 +479,8 @@ async function generateQuoNumber(selectedDate) {
     const day = String(dateObj.getDate()).padStart(2, '0');
     const datePart = `${year}${month}${day}`;
 
-    // 使用精確的日期範圍過濾 (從當天 00:00 到 23:59)
-    const filter = `date >= "${selectedDate} 00:00:00" && date <= "${selectedDate} 23:59:59"`;
+    // 改用單號前綴過濾，這樣最準確 (例如過濾 "20260117-")
+    const filter = `quo_number ~ "${datePart}-"`;
 
     let sequence = "01";
     try {
