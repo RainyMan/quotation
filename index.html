@@ -28,8 +28,10 @@
                         class="bi bi-plus-lg me-2"></i>新增報價</button>
                 <button class="btn btn-outline-primary" onclick="window.print()"><i class="bi bi-printer me-2"></i>列印
                     A4</button>
-                <button class="btn btn-primary" id="btn-save"><i class="bi bi-cloud-arrow-up me-2"></i>儲存並發送</button>
-                <button class="btn btn-outline-info" id="btn-share"><i class="bi bi-share me-2"></i>分享連結</button>
+                <button class="btn btn-primary" id="btn-save" onclick="saveQuotation()"><i
+                        class="bi bi-cloud-arrow-up me-2"></i>儲存並發送</button>
+                <button class="btn btn-outline-dark" id="btn-share" onclick="generateShareLink()"><i
+                        class="bi bi-share me-2"></i>分享連結</button>
                 <button class="btn btn-dark" id="btn-history" data-bs-toggle="modal" data-bs-target="#historyModal"><i
                         class="bi bi-clock-history me-2"></i>歷史紀錄</button>
             </div>

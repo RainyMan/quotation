@@ -244,7 +244,7 @@ async function updateItemsDatalist() {
     }
 }
 
-async function saveQuotation(isCopy = false) {
+window.saveQuotation = async function (isCopy = false) {
     try {
         const btn = document.getElementById('btn-save');
         btn.disabled = true;
@@ -303,14 +303,19 @@ async function saveQuotation(isCopy = false) {
 
         currentQuotationId = record.id; // 儲存後標記為正在編輯此單
 
-        // 解析補充說明並自動同步到 memo_presets
+        // 解析補充說明並自動同步到 memo_presets (重複檢查)
         const memoLines = document.getElementById('memo-field').innerText.split('\n');
+        // 先取得現有 presets
+        const existingPresets = await pb.collection('memo_presets').getFullList();
+        const existingContents = existingPresets.map(p => p.content.trim());
+
         for (let line of memoLines) {
             const cleanLine = line.replace(/^\d+\.\s*/, '').trim();
-            if (cleanLine.length > 3) {
+            if (cleanLine.length > 3 && !existingContents.includes(cleanLine)) {
                 try {
                     await pb.collection('memo_presets').create({ content: cleanLine }, { '$autoCancel': false });
-                } catch (err) { /* 可能已存在，忽略 */ }
+                    existingContents.push(cleanLine); // 避免本次儲存中重複
+                } catch (err) { /* 忽略 */ }
             }
         }
 
@@ -358,6 +363,7 @@ async function loadHistory() {
 
         records.items.forEach(q => {
             const tr = document.createElement('tr');
+            tr.className = 'clickable-row';
             // 安全處理日期與顯示
             const displayDate = q.date ? q.date.substring(0, 10) : (q.created ? q.created.substring(0, 10) : '---');
             const displayTotal = q.total ? q.total.toLocaleString() : '0';
@@ -370,12 +376,14 @@ async function loadHistory() {
                 <td><span class="badge bg-primary">已儲存</span></td>
                 <td>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="editQuotation('${q.id}')">編輯</button>
-                        <button class="btn btn-outline-info" onclick="copyQuotation('${q.id}')">複製</button>
-                        <button class="btn btn-outline-danger" onclick="deleteQuotation('${q.id}')">刪除</button>
+                        <button class="btn btn-outline-primary" onclick="event.stopPropagation(); editQuotation('${q.id}')">編輯</button>
+                        <button class="btn btn-outline-info" onclick="event.stopPropagation(); copyQuotation('${q.id}')">複製</button>
+                        <button class="btn btn-outline-success" onclick="event.stopPropagation(); copyShareLinkById('${q.id}')"><i class="bi bi-share"></i></button>
+                        <button class="btn btn-outline-danger" onclick="event.stopPropagation(); deleteQuotation('${q.id}')">刪除</button>
                     </div>
                 </td>
             `;
+            tr.onclick = () => editQuotation(q.id);
             historyBody.appendChild(tr);
         });
     } catch (e) {
@@ -680,19 +688,23 @@ window.addEventListener('afterprint', () => {
 
 // --- 11. 分享連結與電子簽章邏輯 ---
 
-// 產生分享連結 (本機暫以 localhost 為主)
-async function generateShareLink() {
+// 產生分享連結
+window.generateShareLink = async function () {
     if (!currentQuotationId) {
         alert('請先儲存報價單，才能產生分享連結');
         return;
     }
-    const currentUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${currentUrl}?view=${currentQuotationId}`;
+    await copyShareLinkById(currentQuotationId);
+}
 
-    // 複製到剪貼簿
+// 根據 ID 複製分享連結
+window.copyShareLinkById = async function (id) {
+    const currentUrl = window.location.origin + window.location.pathname;
+    const shareUrl = `${currentUrl}?view=${id}`;
+
     try {
         await navigator.clipboard.writeText(shareUrl);
-        alert(`分享連結已複製到剪貼簿：\n${shareUrl}\n\n您可以將此連結傳給甲方簽名。`);
+        alert(`分享連結已複製到剪貼簿！`);
     } catch (err) {
         prompt('請手動複製連結：', shareUrl);
     }
