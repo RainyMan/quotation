@@ -373,7 +373,8 @@ async function loadHistory() {
             historyBody.appendChild(tr);
         });
     } catch (e) {
-        console.error(e);
+        console.error('歷史讀取失敗', e);
+        alert(`讀取失敗！錯誤訊息：${e.message}\n這通常是權限(API Rules)或資料過濾語法問題。`);
         historyBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">讀取失敗</td></tr>';
     }
 }
@@ -405,15 +406,21 @@ window.editQuotation = async function (id) {
         // 還原品項
         itemsBody.innerHTML = '';
         rowCount = 0;
-        const items = q.items;
-        items.forEach(item => {
-            const tr = createRow();
-            tr.querySelector('.item-name').value = item.name;
-            tr.querySelector('.item-unit').value = item.unit;
-            tr.querySelector('.item-qty').value = item.qty;
-            tr.querySelector('.item-price').value = item.price;
-            tr.querySelector('.item-note').value = item.note || '';
-        });
+        // 安全處理解析
+        let items = q.items;
+        if (typeof items === 'string') {
+            try { items = JSON.parse(items); } catch (err) { items = []; }
+        }
+        if (Array.isArray(items)) {
+            items.forEach(item => {
+                const tr = createRow();
+                tr.querySelector('.item-name').value = item.name || "";
+                tr.querySelector('.item-unit').value = item.unit || "式";
+                tr.querySelector('.item-qty').value = item.qty || 1;
+                tr.querySelector('.item-price').value = item.price || 0;
+                tr.querySelector('.item-note').value = item.note || '';
+            });
+        }
         calculateTotals();
 
         // 還原廠商
