@@ -342,11 +342,13 @@ async function loadHistory() {
             filterStr = `(customer_name ~ "${customerSearch}" || project_name ~ "${customerSearch}" || project_location ~ "${customerSearch}")`;
         }
 
-        const records = await pb.collection('quotations').getList(1, 50, {
-            filter: filterStr,
-            sort: '-created',
+        const options = {
+            sort: '-id',
             $autoCancel: false
-        });
+        };
+        if (filterStr) options.filter = filterStr;
+
+        const records = await pb.collection('quotations').getList(1, 50, options);
 
         historyBody.innerHTML = '';
         if (records.items.length === 0) {
@@ -477,8 +479,8 @@ async function generateQuoNumber(selectedDate) {
     try {
         const todayRecords = await pb.collection('quotations').getList(1, 1, {
             filter: filter,
-            sort: '-created',
-            $autoCancel: false // 防止並發請求被取消
+            sort: '-id',
+            $autoCancel: false
         });
         sequence = String(todayRecords.totalItems + 1).padStart(2, '0');
     } catch (e) {
