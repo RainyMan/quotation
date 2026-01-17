@@ -24,6 +24,10 @@ const vendorForm = document.getElementById('vendor-form');
 const stampPreview = document.getElementById('m-v-stamp-preview');
 const stampImgArea = document.getElementById('vendor-stamp-img');
 
+// 歷史紀錄排序變數
+let historySort = { field: 'updated', direction: 'desc' }; // 預設依最後更新由新到舊
+
+
 // --- 3. 國字大寫轉換與備註功能 ---
 function addMemo(text) {
     const memoField = document.getElementById('memo-field');
@@ -268,16 +272,22 @@ async function updateItemsDatalist() {
 async function loadItemPresets() {
     const presetContainer = document.getElementById('item-presets-container');
     if (!presetContainer) return;
+    presetContainer.innerHTML = '<div class="text-center small py-2">載入中...</div>';
     try {
-        const records = await pb.collection('items').getFullList({ sort: 'name' });
+        const records = await pb.collection('items').getFullList({ sort: 'name', '$autoCancel': false });
+        console.log('Loaded item presets:', records.length);
 
         presetContainer.innerHTML = '';
+        if (records.length === 0) {
+            presetContainer.innerHTML = '<div class="text-center small py-2 text-muted">目前無品項紀錄</div>';
+        }
+
         records.forEach((r, index) => {
             const div = document.createElement('div');
             div.className = 'd-flex align-items-center justify-content-between mb-2 p-1 border-bottom-dashed';
             div.innerHTML = `
                 <div class="d-flex align-items-center flex-grow-1 cursor-pointer" onclick="addItemFromPreset('${r.id}')">
-                    <span class="small flex-grow-1">${r.name} (${r.unit})</span>
+                    <span class="small flex-grow-1">${r.name} (${r.unit || '式'})</span>
                 </div>
                 <i class="bi bi-x-circle text-danger ms-2 cursor-pointer" onclick="event.stopPropagation(); deleteItemPreset('${r.id}', '${r.name}')" title="刪除此預設品項"></i>
             `;
@@ -290,6 +300,7 @@ async function loadItemPresets() {
         });
     } catch (e) {
         console.error('載入品項預設失敗', e);
+        presetContainer.innerHTML = '<div class="text-center small py-2 text-danger">載入失敗</div>';
     }
 }
 
@@ -418,6 +429,9 @@ async function loadHistory() {
     historyBody.innerHTML = '<tr><td colspan="6" class="text-center">載入中...</td></tr>';
 
     try {
+        // 更新排序圖示
+        updateSortIcons();
+
         // 優化搜尋字串，如果欄位不存在，getList 會噴 400
         let filterStr = '';
         const filters = [];
@@ -436,8 +450,11 @@ async function loadHistory() {
 
         filterStr = filters.join(' && ');
 
+        // 構建排序字串 (PocketBase 語法: field 或 -field)
+        const sortParam = (historySort.direction === 'desc' ? '-' : '') + historySort.field;
+
         const options = {
-            sort: '-id',
+            sort: sortParam,
             $autoCancel: false
         };
         if (filterStr) options.filter = filterStr;
@@ -456,13 +473,14 @@ async function loadHistory() {
             // 安全處理日期與顯示
             const displayDate = q.date ? q.date.substring(0, 10) : (q.created ? q.created.substring(0, 10) : '---');
             const displayTotal = q.total ? q.total.toLocaleString() : '0';
+            const displayUpdated = q.updated ? q.updated.substring(0, 16).replace('T', ' ') : '---';
 
             tr.innerHTML = `
                 <td>${q.quo_number || '---'}</td>
                 <td>${displayDate}</td>
                 <td>${q.customer_name || '未命名客戶'}</td>
                 <td>NT$ ${displayTotal}</td>
-                <td><span class="badge bg-primary">已儲存</span></td>
+                <td class="small">${displayUpdated}</td>
                 <td>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-primary" onclick="event.stopPropagation(); editQuotation('${q.id}')">編輯</button>
@@ -479,6 +497,30 @@ async function loadHistory() {
         console.error('歷史讀取失敗', e);
         alert(`讀取失敗！錯誤訊息：${e.message}\n這通常是權限(API Rules)或資料過濾語法問題。`);
         historyBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">讀取失敗</td></tr>';
+    }
+}
+
+window.toggleHistorySort = function (field) {
+    if (historySort.field === field) {
+        historySort.direction = historySort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        historySort.field = field;
+        historySort.direction = 'desc'; // 切換新欄位預設由大到小
+    }
+    loadHistory();
+};
+
+function updateSortIcons() {
+    const iconDate = document.getElementById('sort-icon-date');
+    const iconUpdated = document.getElementById('sort-icon-updated');
+
+    if (iconDate) iconDate.innerHTML = '';
+    if (iconUpdated) iconUpdated.innerHTML = '';
+
+    const targetIcon = document.getElementById(`sort-icon-${historySort.field}`);
+    if (targetIcon) {
+        const iconClass = historySort.direction === 'asc' ? 'bi-caret-up-fill' : 'bi-caret-down-fill';
+        targetIcon.innerHTML = `<i class="bi ${iconClass}"></i>`;
     }
 }
 

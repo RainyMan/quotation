@@ -80,7 +80,8 @@
                         統編：<span id="v-tax">96833966</span><br>
                         聯絡人：<span id="v-contact">吳志佳</span> | 電話：<span id="v-phone">09-0808-5050</span><br>
                         地址：<span id="v-address">新北市板橋區雙十路二段27號四樓</span><br>
-                        網頁：<span id="v-website">TarmacRoad.com</span> | Email：<span id="v-email">Ac@tarmacroad.com</span>
+                        網頁：<span id="v-website">TarmacRoad.com</span> | Email：<span
+                            id="v-email">Ac@tarmacroad.com</span>
                     </div>
                 </div>
             </div>
@@ -290,10 +291,12 @@
                             <thead>
                                 <tr>
                                     <th>編號</th>
-                                    <th>日期</th>
+                                    <th onclick="toggleHistorySort('date')" style="cursor:pointer">日期 <span
+                                            id="sort-icon-date"></span></th>
                                     <th>客戶</th>
                                     <th>總額</th>
-                                    <th>狀態</th>
+                                    <th onclick="toggleHistorySort('updated')" style="cursor:pointer">最後更新 <span
+                                            id="sort-icon-updated"></span></th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
