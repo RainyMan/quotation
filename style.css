@@ -1,0 +1,270 @@
+:root {
+    --primary-color: #0d6efd;
+    --primary-gradient: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --table-header-yellow: #fff9c4;
+    /* 淺黃配色 */
+}
+
+body {
+    font-family: 'Noto Sans TC', sans-serif;
+    color: #333;
+    overflow-x: hidden;
+}
+
+/* A4 Page Layout */
+.a4-page {
+    width: 210mm;
+    min-height: 297mm;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Premium Card Effect */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Content Editable Styling */
+[contenteditable="true"] {
+    outline: none;
+    transition: background-color 0.2s;
+    border-radius: 4px;
+    padding: 2px 4px;
+}
+
+[contenteditable="true"]:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+[contenteditable="true"]:focus {
+    background-color: rgba(13, 110, 253, 0.1);
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2);
+}
+
+/* Image Attachment Layouts */
+#quotation-attachments {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.attachment-item {
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.attachment-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.layout-1 .attachment-item {
+    width: 60%;
+    height: 300px;
+}
+
+.layout-2 .attachment-item {
+    width: 48%;
+    height: 250px;
+}
+
+.layout-3 .attachment-item {
+    width: 31%;
+    height: 200px;
+}
+
+.layout-4 {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 200px);
+    width: 80% !important;
+    margin: 0 auto;
+}
+
+.attachment-item .remove-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(255, 71, 87, 0.8);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* Image Preview */
+.preview-img-container {
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.preview-img-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.preview-img-container .remove-btn {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4757;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+/* Print Configuration */
+.print-only {
+    display: none !important;
+}
+
+@media print {
+
+    /* 強制所有背景為白色，防止 Bootstrap 或系統預設灰色 */
+    html,
+    body {
+        background: #fff !important;
+        background-color: #fff !important;
+        margin: 0;
+        padding: 0;
+    }
+
+    .print-only {
+        display: inline-block !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .a4-page {
+        width: 100% !important;
+        height: auto;
+        margin: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        background: #fff !important;
+        background-color: #fff !important;
+    }
+
+    /* 移除 Bootstrap 的 bg-light 背景色與陰影 */
+    .bg-light,
+    .bg-white,
+    .shadow-lg,
+    .p-5 {
+        background-color: #fff !important;
+        box-shadow: none !important;
+    }
+
+    .table-responsive {
+        overflow: visible !important;
+    }
+
+    /* 確保所有元素在列印時不保留非必要的背景色 */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}
+
+/* Typography */
+.ls-wide {
+    letter-spacing: 0.2em;
+}
+
+.table-yellow {
+    background-color: var(--table-header-yellow) !important;
+    color: #444;
+}
+
+.table-yellow th {
+    border-bottom: 2px solid #edcc1c !important;
+}
+
+/* Table Input Styling */
+.table input {
+    border: none;
+    background: transparent;
+    width: 100%;
+    outline: none;
+    text-align: inherit;
+}
+
+.table input:focus {
+    background: rgba(13, 110, 253, 0.05);
+}
+
+/* Signature Pad & Online Signature Display */
+#sig-client-display {
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.02);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    min-height: 60px;
+}
+
+#sig-client-img {
+    mix-blend-mode: multiply;
+    /* 讓白底簽名透明化 */
+    max-width: 100%;
+    filter: contrast(1.2);
+}
+
+/* View Mode Styling */
+.view-mode .no-print {
+    display: none !important;
+}
+
+.view-mode [contenteditable="true"] {
+    background-color: transparent !important;
+    cursor: default !important;
+    border: none !important;
+}
+
+.view-mode input,
+.view-mode select,
+.view-mode textarea {
+    border: none !important;
+    background-color: transparent !important;
+    color: #333 !important;
+    cursor: default !important;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}

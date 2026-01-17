@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專業報價系統 | Quotation System</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- Signature Pad -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+</head>
+
+<body class="bg-light">
+
+    <!-- UI 控制區 (列印時隱藏) -->
+    <div class="container my-4 no-print" id="ui-controls">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-primary"><i class="bi bi-file-earmark-spreadsheet-fill me-2"></i>專業報價系統</h2>
+            <div class="btn-group">
+                <button class="btn btn-outline-success" onclick="location.reload()"><i
+                        class="bi bi-plus-lg me-2"></i>新增報價</button>
+                <button class="btn btn-outline-primary" onclick="window.print()"><i class="bi bi-printer me-2"></i>列印
+                    A4</button>
+                <button class="btn btn-primary" id="btn-save"><i class="bi bi-cloud-arrow-up me-2"></i>儲存並發送</button>
+                <button class="btn btn-outline-info" id="btn-share"><i class="bi bi-share me-2"></i>分享連結</button>
+                <button class="btn btn-dark" id="btn-history" data-bs-toggle="modal" data-bs-target="#historyModal"><i
+                        class="bi bi-clock-history me-2"></i>歷史紀錄</button>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <!-- 廠商管理 -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm glass-card">
+                    <div class="card-body py-2">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold mb-0">報價廠商管理</label>
+                            </div>
+                            <div class="col-md-6">
+                                <select id="vendor-select" class="form-select form-select-sm">
+                                    <option value="">-- 請選擇報價廠商 --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                                    data-bs-target="#vendorModal">
+                                    <i class="bi bi-gear me-1"></i> 管理廠商資料
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 報價單主體 (A4 內容) -->
+    <div class="a4-page mx-auto bg-white shadow-lg my-4" id="quotation-print-area">
+        <div class="p-5">
+            <!-- Header: 廠商資訊 -->
+            <div class="row border-bottom pb-4 mb-4">
+                <div class="col-5">
+                    <!-- Logo/Title Area -->
+                    <h1 class="display-5 fw-bold text-primary mb-0">工程報價單</h1>
+                    <p class="text-muted small mb-0">Construction Quotation</p>
+                    <p class="text-muted small">單號：<span id="quo-number">---</span></p>
+                </div>
+                <div class="col-7 text-end">
+
+                    <h4 id="v-name" contenteditable="true">大馬道路有限公司</h4>
+                    <div class="small text-muted" style="white-space: nowrap;">
+                        統編：<span id="v-tax" contenteditable="true">96833966</span><br>
+                        聯絡人：<span id="v-contact" contenteditable="true">吳志佳</span> | 電話：<span id="v-phone"
+                            contenteditable="true">09-0808-5050</span><br>
+                        地址：<span id="v-address" contenteditable="true">新北市板橋區雙十路二段27號四樓</span><br>
+                        網頁：<span id="v-website" contenteditable="true">TarmacRoad.com</span> | Email：<span id="v-email"
+                            contenteditable="true">Ac@tarmacroad.com</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 客戶資訊 -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <div class="p-3 bg-light rounded-3 border">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="text-primary fw-bold small mb-1 no-print">公司名稱</label>
+                                <div id="c-name" contenteditable="true" class="fw-bold fs-4">請輸入公司名稱</div>
+                            </div>
+                            <div class="col-6">
+                                <label class="text-primary fw-bold small mb-1 no-print">工程名稱</label>
+                                <div id="c-location" contenteditable="true" class="fw-bold fs-4">請輸入工程名稱</div>
+                            </div>
+                            <!-- 下一排分割成兩欄 -->
+                            <div class="col-5 bg-light">
+                                <strong>日期：</strong>
+                                <input type="date" id="c-date-input"
+                                    class="form-control d-inline-block w-auto no-print">
+                                <span id="c-date-display" class="print-only"></span>
+                            </div>
+                            <div class="col-7 text-end" style="white-space: nowrap;">
+                                <strong>聯絡人：</strong> <span id="c-contact" contenteditable="true">王先生</span>
+                                <span class="mx-2">|</span>
+                                <strong>電話：</strong> <span id="c-phone" contenteditable="true">0912-345-678</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 報價品項表格 -->
+            <div class="table-responsive mb-4">
+                <table class="table table-bordered align-middle" id="items-table">
+                    <thead class="table-yellow">
+                        <tr>
+                            <th style="width: 5%">項次</th>
+                            <th style="width: 35%">品項</th>
+                            <th style="width: 10%">單位</th>
+                            <th style="width: 10%">數量</th>
+                            <th style="width: 15%">單價</th>
+                            <th style="width: 15%">小計</th>
+                            <th style="width: 10%">備註</th>
+                            <th class="no-print" style="width: 5%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-body">
+                        <!-- 動態插入 -->
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="8" class="text-center py-2 no-print">
+                                <button class="btn btn-sm btn-outline-secondary w-100" id="add-row">
+                                    <i class="bi bi-plus-circle me-1"></i> 新增品項
+                                </button>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- 金額統計與大寫 -->
+            <div class="row g-4 border-top pt-4 mb-4">
+                <div class="col-7">
+                    <div class="mb-3">
+                        <label class="fw-bold mb-1">金額大寫：</label>
+                        <div class="p-2 border rounded bg-light fw-bold text-dark h5" id="total-chinese">
+                            零元整
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold mb-1">補充說明:</label>
+                        <div class="dropdown no-print mb-2">
+                            <button class="btn btn-sm btn-outline-primary dropdown-toggle w-100" type="button"
+                                id="memoDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                -- 勾選常用說明內容 --
+                            </button>
+                            <div class="dropdown-menu p-3 w-100" aria-labelledby="memoDropdown"
+                                id="memo-presets-container" style="max-height: 300px; overflow-y: auto;">
+                                <!-- JS 動態加載多選核取方塊 -->
+                            </div>
+                        </div>
+                        <div contenteditable="true" id="memo-field" class="p-2 border rounded small"
+                            style="min-height: 80px;">
+                            1. 本報價有效期限自報價日起 30 天。<br>
+                            2. 交付期限：簽約後 14 個工作天。<br>
+                            3. 付款方式：匯款。
+                        </div>
+                    </div>
+                    <!-- 附件照片上傳 (內部版) -->
+                    <div class="mb-3 no-print">
+                        <label class="fw-bold small mb-1 text-muted"><i class="bi bi-camera me-1"></i> 新增附件照片</label>
+                        <input type="file" id="image-upload" class="form-control form-control-sm" multiple
+                            accept="image/*">
+                    </div>
+                </div>
+                <div class="col-5">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>合計金額 (未稅)</span>
+                        <span class="fw-bold" id="subtotal">NT$ 0</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>營業稅 (5%)</span>
+                        <span class="fw-bold" id="tax">NT$ 0</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-top pt-2 mt-2 h5">
+                        <span class="fw-bold">總計金額 (含稅)</span>
+                        <span class="fw-bold text-primary" id="total">NT$ 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 報價附件照片區 -->
+            <div id="quotation-attachments" class="mb-4 d-flex justify-content-center flex-wrap gap-2">
+                <!-- 照片將根據數量動態插入並套用版型 -->
+            </div>
+
+            <!-- 簽章區 -->
+            <div class="row mt-5 pt-5 text-center">
+                <div class="col-6 border-end">
+                    <p class="mb-5 text-muted fw-bold"><span id="sig-c-name">請輸入公司名稱</span>（甲方）：</p>
+                    <!-- 甲方電子簽名顯示區 -->
+                    <div id="sig-client-display" class="text-center position-relative"
+                        style="height: 60px; margin-bottom: 10px;">
+                        <img id="sig-client-img" src="" style="max-height: 80px; display: none;">
+                        <button id="btn-client-sign" class="btn btn-sm btn-primary no-print" style="display: none;"
+                            data-bs-toggle="modal" data-bs-target="#signatureModal">
+                            <i class="bi bi-pencil-fill me-1"></i> 甲方線上簽名
+                        </button>
+                    </div>
+                    <div style="border-bottom: 2px solid #ccc; width: 80%; margin: 0 auto 10px;"></div>
+                    <p class="small text-muted">(簽章)</p>
+                </div>
+                <div class="col-6">
+                    <p class="mb-5 text-muted fw-bold"><span id="sig-v-name">您的公司名稱</span>（乙方）：</p>
+                    <!-- 簽名預覽區 -->
+                    <div id="signature-preview" class="position-relative" style="height: 60px;">
+                        <img id="vendor-stamp-img" src="" class="position-absolute start-50 translate-middle-x"
+                            style="top: -20px; width: 100px; opacity: 0.95; display: none; z-index: 1;">
+                    </div>
+                    <div style="border-bottom: 2px solid #ccc; width: 80%; margin: 0 auto 10px;"></div>
+                    <p class="small text-muted">(簽章)</p>
+                </div>
+            </div>
+
+            <div class="mt-4 text-center text-muted small no-print">
+                <i class="bi bi-info-circle me-1"></i> 提示：點擊上方文字或數字可直接編輯內容。
+            </div>
+        </div>
+    </div>
+
+    <!-- 獨立印章控制項 (掛在右側) -->
+    <div class="no-print position-fixed end-0 top-50 translate-middle-y me-4" style="z-index: 1050;">
+        <div class="card shadow-sm border-primary" style="width: 60px; background: rgba(255,255,255,0.9);">
+            <div class="card-body p-2 text-center">
+                <small class="text-primary fw-bold" style="font-size: 10px; writing-mode: vertical-rl;">印章縮放 <span
+                        id="stamp-scale-val">175</span>%</small>
+                <input type="range" id="stamp-scale" min="50" max="250" value="175" class="form-range mt-3"
+                    style="transform: rotate(270deg); width: 80px; height: 4px; cursor: ns-resize; margin: 30px 0;">
+            </div>
+        </div>
+    </div>
+
+    <!-- 歷史紀錄 Modal -->
+    <div class="modal fade" id="historyModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">歷史報價單紀錄</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <input type="text" id="history-search-customer" class="form-control"
+                                placeholder="搜尋客戶名稱...">
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text">日期區間</span>
+                                <input type="date" id="history-start" class="form-control">
+                                <input type="date" id="history-end" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" id="btn-history-filter">篩選</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>編號</th>
+                                    <th>日期</th>
+                                    <th>客戶</th>
+                                    <th>總額</th>
+                                    <th>狀態</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-body">
+                                <!-- 動態插入 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 廠商管理 Modal -->
+    <div class="modal fade" id="vendorModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">廠商資料管理</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="vendor-form" class="row g-3 mb-4">
+                        <input type="hidden" id="vendor-id">
+                        <div class="col-md-6">
+                            <label class="form-label">廠商名稱</label>
+                            <input type="text" id="m-v-name" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">統一編號</label>
+                            <input type="text" id="m-v-tax" class="form-control">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">公司地址</label>
+                            <input type="text" id="m-v-address" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">聯絡人</label>
+                            <input type="text" id="m-v-contact" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">聯絡電話</label>
+                            <input type="text" id="m-v-phone" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">公司網頁</label>
+                            <input type="text" id="m-v-website" class="form-control" placeholder="http://...">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="m-v-email" class="form-control" placeholder="service@...">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">廠商用印 (印章照片)</label>
+                            <input type="file" id="m-v-stamp" class="form-control" accept="image/*">
+                            <div id="m-v-stamp-preview" class="mt-2 text-center" style="display:none;">
+                                <img src="" style="max-height: 100px; border: 1px dashed #ccc;">
+                            </div>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="button" class="btn btn-secondary" onclick="resetVendorForm()">清空</button>
+                            <button type="submit" class="btn btn-primary">儲存廠商</button>
+                        </div>
+                    </form>
+                    <hr>
+                    <h6>廠商清單</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>廠商名稱</th>
+                                    <th>聯絡人</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendor-list-body">
+                                <!-- 動態插入 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 電子簽名 Modal -->
+    <div class="modal fade" id="signatureModal" tabindex="-1">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content text-dark">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">甲方電子簽名</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-pills mb-3 justify-content-center" id="sigTab" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" id="hand-tab" data-bs-toggle="pill"
+                                data-bs-target="#sig-hand">手寫簽名</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="upload-tab" data-bs-toggle="pill"
+                                data-bs-target="#sig-upload">上傳圖檔</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content border p-3 rounded bg-white">
+                        <!-- 手寫區 -->
+                        <div class="tab-pane fade show active" id="sig-hand">
+                            <div class="border rounded bg-light text-center mb-2" style="touch-action: none;">
+                                <canvas id="signature-canvas" width="450" height="200"
+                                    style="max-width: 100%; border: 1px solid #ddd; background: #fff;"></canvas>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary w-100" id="btn-clear-sig">清除重簽</button>
+                        </div>
+                        <!-- 上傳區 -->
+                        <div class="tab-pane fade" id="sig-upload">
+                            <div class="mb-3">
+                                <label class="form-label">請選擇簽名圖檔 (如電子章)</label>
+                                <input type="file" id="sig-file" class="form-control" accept="image/*">
+                            </div>
+                            <div id="sig-upload-preview" class="text-center" style="display:none;">
+                                <img src="" style="max-height: 100px; border: 1px dashed #ccc;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="btn-submit-sig">確認提交並回傳</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <datalist id="items-datalist"></datalist>
+
+    <script src="https://cdn.jsdelivr.net/npm/pocketbase/dist/pocketbase.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
