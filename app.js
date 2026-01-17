@@ -299,8 +299,8 @@ async function loadItemPresets() {
             e.stopPropagation();
         });
     } catch (e) {
-        console.error('載入品項預設失敗', e);
-        presetContainer.innerHTML = '<div class="text-center small py-2 text-danger">載入失敗</div>';
+        console.error('載入品項預設失敗詳細資訊:', e);
+        presetContainer.innerHTML = `<div class="text-center small py-2 text-danger">載入失敗: ${e.message}</div>`;
     }
 }
 
@@ -436,7 +436,9 @@ async function loadHistory() {
         let filterStr = '';
         const filters = [];
         if (customerSearch) {
-            filters.push(`(customer_name ~ "${customerSearch}" || project_name ~ "${customerSearch}" || project_location ~ "${customerSearch}")`);
+            // 注意：若資料庫缺少欄位，此過濾語法會導致 400 錯誤。
+            // 建議使用者確認欄位是否存在，或暫時縮減過濾範圍。
+            filters.push(`(customer_name ~ "${customerSearch}" || project_name ~ "${customerSearch}")`);
         }
 
         const dateStart = document.getElementById('history-start').value;
@@ -494,8 +496,9 @@ async function loadHistory() {
             historyBody.appendChild(tr);
         });
     } catch (e) {
-        console.error('歷史讀取失敗', e);
-        alert(`讀取失敗！錯誤訊息：${e.message}\n這通常是權限(API Rules)或資料過濾語法問題。`);
+        console.error('歷史讀取失敗詳細資訊:', e);
+        const detail = e.data?.message || e.message;
+        alert(`讀取歷史紀錄失敗！\n錯誤原因：${detail}\n\n這通常是欄位名稱不符或是 PocketBase API Rules 未開放讀取權限。`);
         historyBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">讀取失敗</td></tr>';
     }
 }
