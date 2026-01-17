@@ -473,24 +473,34 @@ window.copyQuotation = async function (id) {
 
 // --- 8. 初始化與輔助功能 ---
 async function generateQuoNumber(selectedDate) {
-    const dateObj = new Date(selectedDate);
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const datePart = `${year}${month}${day}`;
+    // 確保日期的處理不受時區偏移影響
+    const parts = selectedDate.split('-');
+    if (parts.length !== 3) return;
+    const datePart = parts[0] + parts[1] + parts[2]; // YYYYMMDD
 
-    // 改用單號前綴過濾，這樣最準確 (例如過濾 "20260117-")
-    const filter = `quo_number ~ "${datePart}-"`;
+    // 使用單號前綴過濾，並使用單引號符合 PocketBase 慣例
+    const filter = `quo_number ~ '${datePart}-'`;
 
     let sequence = "01";
     try {
-        const todayRecords = await pb.collection('quotations').getList(1, 1, {
+        // 取得該日期單號最大的那一筆
+        const result = await pb.collection('quotations').getList(1, 1, {
             filter: filter,
+            sort: '-quo_number', // 降冪排序，最大序號會在第一筆
             $autoCancel: false
         });
-        sequence = String(todayRecords.totalItems + 1).padStart(2, '0');
+
+        if (result.items.length > 0) {
+            // 從最後一筆單號（例如 20260117-02）切出目前的序號並 +1
+            const lastFullNo = result.items[0].quo_number;
+            const seqPart = lastFullNo.split('-')[1];
+            if (seqPart) {
+                const nextSeq = parseInt(seqPart) + 1;
+                sequence = String(nextSeq).padStart(2, '0');
+            }
+        }
     } catch (e) {
-        console.warn("產生單號過濾失敗", e);
+        console.warn("產生單號失敗，改用預設序號", e);
         sequence = "01";
     }
 
