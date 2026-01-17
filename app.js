@@ -189,10 +189,13 @@ async function loadMemoPresets() {
         presetContainer.innerHTML = '';
         uniqueMemos.forEach((content, index) => {
             const div = document.createElement('div');
-            div.className = 'form-check mb-1';
+            div.className = 'form-check mb-1 d-flex align-items-center justify-content-between';
             div.innerHTML = `
-                <input class="form-check-input memo-checkbox" type="checkbox" value="${content}" id="memo-${index}">
-                <label class="form-check-label small" for="memo-${index}">${content}</label>
+                <div class="d-flex align-items-center">
+                    <input class="form-check-input memo-checkbox me-2" type="checkbox" value="${content}" id="memo-${index}">
+                    <label class="form-check-label small" for="memo-${index}">${content}</label>
+                </div>
+                <i class="bi bi-x-circle text-danger ms-2 cursor-pointer" onclick="deleteMemoPreset('${content}')" title="刪除此預設值"></i>
             `;
             presetContainer.appendChild(div);
         });
@@ -210,6 +213,23 @@ async function loadMemoPresets() {
         console.error('載入預設說明失敗', e);
     }
 }
+
+window.deleteMemoPreset = async function (content) {
+    if (!confirm(`確定要刪除「${content}」這個預設備註嗎？`)) return;
+    try {
+        // 找到所有內容符合的記錄並刪除
+        const records = await pb.collection('memo_presets').getFullList({
+            filter: `content = "${content}"`
+        });
+        for (const record of records) {
+            await pb.collection('memo_presets').delete(record.id);
+        }
+        loadMemoPresets(); // 重新載入清單
+    } catch (e) {
+        console.error('刪除預設備註失敗', e);
+        alert('刪除失敗');
+    }
+};
 
 function syncMemoPresets() {
     const checkboxes = document.querySelectorAll('.memo-checkbox:checked');
