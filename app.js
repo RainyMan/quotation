@@ -296,9 +296,9 @@ window.saveQuotation = async function (isCopy = false) {
         const recordId = currentQuotationId;
         let record;
         if (recordId) {
-            record = await pb.collection('quotations').update(recordId, formData);
+            record = await pb.collection('quotations').update(recordId, formData, { '$autoCancel': false });
         } else {
-            record = await pb.collection('quotations').create(formData);
+            record = await pb.collection('quotations').create(formData, { '$autoCancel': false });
         }
 
         currentQuotationId = record.id; // 儲存後標記為正在編輯此單
