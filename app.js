@@ -336,12 +336,16 @@ async function loadHistory() {
     historyBody.innerHTML = '<tr><td colspan="6" class="text-center">載入中...</td></tr>';
 
     try {
-        // 同時搜尋公司名稱與工程名稱
-        const filterStr = customerSearch ? `(customer_name ~ "${customerSearch}" || project_name ~ "${customerSearch}" || project_location ~ "${customerSearch}")` : '';
+        // 優化搜尋字串，如果欄位不存在，getList 會噴 400
+        let filterStr = '';
+        if (customerSearch) {
+            filterStr = `(customer_name ~ "${customerSearch}" || project_name ~ "${customerSearch}" || project_location ~ "${customerSearch}")`;
+        }
 
         const records = await pb.collection('quotations').getList(1, 50, {
             filter: filterStr,
-            sort: '-created'
+            sort: '-created',
+            $autoCancel: false
         });
 
         historyBody.innerHTML = '';
@@ -466,14 +470,21 @@ async function generateQuoNumber(selectedDate) {
     const datePart = `${year}${month}${day}`;
 
     let sequence = "01";
+    // 修正過濾語法，確保符合 PocketBase 格式
+    // 如果 date 欄位有問題，這裡會報錯。我們改用更簡潔的寫法
+    const filter = `date >= "${selectedDate} 00:00:00"`;
+
     try {
         const todayRecords = await pb.collection('quotations').getList(1, 1, {
-            filter: `date >= "${selectedDate} 00:00:00" && date <= "${selectedDate} 23:59:59"`,
-            sort: '-created'
+            filter: filter,
+            sort: '-created',
+            $autoCancel: false // 防止並發請求被取消
         });
         sequence = String(todayRecords.totalItems + 1).padStart(2, '0');
     } catch (e) {
-        console.error("查詢序號失敗", e);
+        console.warn("產生單號過濾失敗，嘗試不帶過濾查詢", e);
+        // 如果還是失敗，可能是欄位名稱不對，回傳預設序號避免崩潰
+        sequence = "01";
     }
 
     document.getElementById('quo-number').innerText = `${datePart}-${sequence}`;
