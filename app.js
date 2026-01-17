@@ -265,6 +265,59 @@ async function updateItemsDatalist() {
     }
 }
 
+async function loadItemPresets() {
+    const presetContainer = document.getElementById('item-presets-container');
+    if (!presetContainer) return;
+    try {
+        const records = await pb.collection('items').getFullList({ sort: 'name' });
+
+        presetContainer.innerHTML = '';
+        records.forEach((r, index) => {
+            const div = document.createElement('div');
+            div.className = 'd-flex align-items-center justify-content-between mb-2 p-1 border-bottom-dashed';
+            div.innerHTML = `
+                <div class="d-flex align-items-center flex-grow-1 cursor-pointer" onclick="addItemFromPreset('${r.id}')">
+                    <span class="small flex-grow-1">${r.name} (${r.unit})</span>
+                </div>
+                <i class="bi bi-x-circle text-danger ms-2 cursor-pointer" onclick="event.stopPropagation(); deleteItemPreset('${r.id}', '${r.name}')" title="刪除此預設品項"></i>
+            `;
+            presetContainer.appendChild(div);
+        });
+
+        // 防止點擊選單內部時自動關閉下拉選單
+        presetContainer.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    } catch (e) {
+        console.error('載入品項預設失敗', e);
+    }
+}
+
+window.addItemFromPreset = async function (id) {
+    try {
+        const item = await pb.collection('items').getOne(id);
+        const tr = createRow();
+        tr.querySelector('.item-name').value = item.name;
+        tr.querySelector('.item-unit').value = item.unit || '式';
+        tr.querySelector('.item-price').value = item.default_price || 0;
+        calculateTotals();
+    } catch (e) {
+        console.error('添加預設品項失敗', e);
+    }
+};
+
+window.deleteItemPreset = async function (id, name) {
+    if (!confirm(`確定要刪除品項預設「${name}」嗎？`)) return;
+    try {
+        await pb.collection('items').delete(id);
+        loadItemPresets();
+        updateItemsDatalist();
+    } catch (e) {
+        console.error('刪製品項預設失敗', e);
+        alert('刪除失敗');
+    }
+};
+
 window.saveQuotation = async function (isCopy = false) {
     try {
         const btn = document.getElementById('btn-save');
@@ -347,6 +400,7 @@ window.saveQuotation = async function (isCopy = false) {
         updateItemsDatalist();
         loadHistory();
         loadMemoPresets();
+        loadItemPresets();
 
     } catch (error) {
         console.error('儲存失敗', error);
@@ -938,6 +992,7 @@ setupDynamicSync();
 loadMemoPresets();
 renderVendors();
 updateItemsDatalist();
+loadItemPresets();
 
 // 初始新增一列 (使用者再視需求自行新增)
 for (let i = 0; i < 1; i++) createRow();

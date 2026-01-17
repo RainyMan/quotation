@@ -281,3 +281,8 @@ body {
     -moz-appearance: none;
     appearance: none;
 }
+
+/* 檢視模式下顯示日期 display */
+.view-mode .print-only {
+    display: inline-block !important;
+}
