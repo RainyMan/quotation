@@ -301,6 +301,8 @@ window.saveQuotation = async function (isCopy = false) {
         const projName = document.getElementById('c-location').innerText;
         formData.append('project_location', projName);
         formData.append('project_name', projName);
+        formData.append('customer_contact', document.getElementById('c-contact').innerText);
+        formData.append('customer_phone', document.getElementById('c-phone').innerText);
         formData.append('date', document.getElementById('c-date-input').value);
         formData.append('total', parseFloat(totalEl.innerText.replace(/[^\d]/g, '')));
         formData.append('items', JSON.stringify(items));
@@ -444,6 +446,8 @@ window.editQuotation = async function (id) {
         document.getElementById('quo-number').innerText = q.quo_number;
         document.getElementById('c-name').innerText = q.customer_name || "";
         document.getElementById('c-location').innerText = q.project_location || q.project_name || ""; // 相容不同欄位名
+        document.getElementById('c-contact').innerText = q.customer_contact || "王先生";
+        document.getElementById('c-phone').innerText = q.customer_phone || "0912-345-678";
 
         const dateVal = q.date ? q.date.substring(0, 10) : "";
         document.getElementById('c-date-input').value = dateVal;
@@ -773,8 +777,10 @@ async function loadQuotationForView(id) {
         document.getElementById('quo-number').innerText = q.quo_number;
         document.getElementById('c-name').innerText = q.customer_name;
         document.getElementById('c-location').innerText = q.project_name || q.project_location;
-        document.getElementById('c-date-input').value = q.date ? q.date.split(' ')[0] : '';
-        document.getElementById('c-date-display').innerText = q.date ? q.date.split(' ')[0] : '';
+        document.getElementById('c-contact').innerText = q.customer_contact || "";
+        document.getElementById('c-phone').innerText = q.customer_phone || "";
+        document.getElementById('c-date-input').value = q.date ? q.date.substring(0, 10) : '';
+        document.getElementById('c-date-display').innerText = q.date ? q.date.substring(0, 10) : '';
 
         // 渲染品項
         itemsBody.innerHTML = '';
