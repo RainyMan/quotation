@@ -542,7 +542,9 @@ async function generateQuoNumber(selectedDate) {
 }
 
 async function initQuotationInfo() {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    // 修正時區問題，使用當地時間
+    const today = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     const dateInput = document.getElementById('c-date-input');
     const dateDisplay = document.getElementById('c-date-display');
 
