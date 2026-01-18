@@ -19,6 +19,27 @@
 
 <body class="bg-light">
 
+    <!-- 高級 PIN 碼登入頁面 -->
+    <div id="login-overlay">
+        <div class="login-card">
+            <h2 class="mb-4">大馬道路報價系統</h2>
+            <p class="text-white-50 mb-3" id="login-hint">請輸入 6 位數通行密碼</p>
+            <div class="pin-container" id="pin-inputs">
+                <input type="password" maxlength="1" class="pin-box" autofocus>
+                <input type="password" maxlength="1" class="pin-box">
+                <input type="password" maxlength="1" class="pin-box">
+                <input type="password" maxlength="1" class="pin-box">
+                <input type="password" maxlength="1" class="pin-box">
+                <input type="password" maxlength="1" class="pin-box">
+            </div>
+            <div class="login-footer d-flex justify-content-center gap-3 align-items-center">
+                <span><i class="bi bi-shield-lock me-1"></i> 安全驗證模式</span>
+                <span class="text-white-50">|</span>
+                <a href="javascript:void(0)" id="btn-reset-pin" class="text-info text-decoration-none small">密碼重置</a>
+            </div>
+        </div>
+    </div>
+
     <!-- 分享頁面工具列 (僅檢視模式顯示) -->
     <div id="view-mode-toolbar" class="no-print bg-white border-bottom shadow-sm py-2 position-sticky top-0"
         style="z-index: 2000; display: none;">

@@ -1209,3 +1209,160 @@ initSignaturePad();
 
 // 檢查是否進入檢視模式
 checkViewMode();
+
+// --- 13. PIN 碼登入與重置邏輯 ---
+let SYSTEM_PIN = "113117"; // 預設密碼
+let configRecordId = null;
+let resetStep = 0; // 0: 登入, 1: 舊密 1, 2: 舊密 2, 3: 新密
+let firstOldPin = "";
+
+const pinInputs = document.querySelectorAll('.pin-box');
+const loginOverlay = document.getElementById('login-overlay');
+const loginHint = document.getElementById('login-hint');
+
+// 從 PocketBase 同步密碼
+async function syncPinFromDb() {
+    try {
+        const record = await pb.collection('system_config').getFirstListItem('key="system_pin"').catch(() => null);
+        if (record) {
+            SYSTEM_PIN = record.value;
+            configRecordId = record.id;
+        } else {
+            // 如果資料庫沒設，嘗試建立 (方便使用者)
+            const newRecord = await pb.collection('system_config').create({ key: 'system_pin', value: '113117' }).catch(() => null);
+            if (newRecord) configRecordId = newRecord.id;
+        }
+    } catch (e) {
+        console.warn('同步資料庫密碼失敗，使用本地預設', e);
+    }
+}
+
+async function initPinLogic() {
+    await syncPinFromDb();
+
+    // 1. 檢查是否已登入 (排除檢視模式)
+    if (isViewMode) {
+        if (loginOverlay) loginOverlay.style.display = 'none';
+        return;
+    }
+
+    const sessionAuth = localStorage.getItem('system_auth');
+    if (sessionAuth === 'true') {
+        if (loginOverlay) loginOverlay.style.display = 'none';
+        return;
+    }
+
+    // 2. 設置輸入框行為
+    pinInputs.forEach((input, index) => {
+        input.addEventListener('input', (e) => {
+            if (e.target.value.length === 1 && index < pinInputs.length - 1) {
+                pinInputs[index + 1].focus();
+            }
+            if (Array.from(pinInputs).every(i => i.value.length === 1)) {
+                checkFullPin();
+            }
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                pinInputs[index - 1].focus();
+            }
+        });
+    });
+
+    // 3. 重置按鈕
+    document.getElementById('btn-reset-pin').addEventListener('click', startResetFlow);
+}
+
+function startResetFlow() {
+    resetStep = 1;
+    loginHint.innerText = "【重置密碼 1/3】請輸入舊密碼";
+    clearPinInputs();
+}
+
+function clearPinInputs() {
+    pinInputs.forEach(i => i.value = '');
+    pinInputs[0].focus();
+}
+
+async function checkFullPin() {
+    const pin = Array.from(pinInputs).map(i => i.value).join('');
+
+    if (resetStep === 0) {
+        // 正常登入
+        if (pin === SYSTEM_PIN) {
+            handleLoginSuccess();
+        } else {
+            handleLoginError("密碼錯誤");
+        }
+    } else if (resetStep === 1) {
+        // 重置步驟 1：驗證舊密碼第一次
+        if (pin === SYSTEM_PIN) {
+            firstOldPin = pin;
+            resetStep = 2;
+            loginHint.innerText = "【重置密碼 2/3】請再次輸入舊密碼驗證";
+            clearPinInputs();
+        } else {
+            handleLoginError("舊密碼錯誤，請重試");
+            resetStep = 0;
+            loginHint.innerText = "請輸入 6 位數通行密碼";
+        }
+    } else if (resetStep === 2) {
+        // 重置步驟 2：驗證舊密碼第二次
+        if (pin === firstOldPin) {
+            resetStep = 3;
+            loginHint.innerText = "【重置密碼 3/3】請設定新的 6 位數密碼";
+            clearPinInputs();
+        } else {
+            handleLoginError("兩次舊密碼輸入不一致");
+            resetStep = 0;
+            loginHint.innerText = "請輸入 6 位數通行密碼";
+        }
+    } else if (resetStep === 3) {
+        // 重置步驟 3：設定新密碼
+        await updateDbPin(pin);
+    }
+}
+
+async function updateDbPin(newPin) {
+    try {
+        if (configRecordId) {
+            await pb.collection('system_config').update(configRecordId, { value: newPin });
+        } else {
+            await pb.collection('system_config').create({ key: 'system_pin', value: newPin });
+        }
+        SYSTEM_PIN = newPin;
+        alert("密碼已成功更新！請使用新密碼登入");
+        resetStep = 0;
+        loginHint.innerText = "請輸入 6 位數通行密碼";
+        clearPinInputs();
+    } catch (e) {
+        alert("更新密碼失敗: " + e.message);
+        resetStep = 0;
+        loginHint.innerText = "請輸入 6 位數通行密碼";
+        clearPinInputs();
+    }
+}
+
+function handleLoginSuccess() {
+    localStorage.setItem('system_auth', 'true');
+    loginOverlay.classList.add('fade-out');
+    setTimeout(() => {
+        loginOverlay.style.display = 'none';
+    }, 800);
+}
+
+function handleLoginError(msg) {
+    const card = document.querySelector('.login-card');
+    card.classList.add('shake');
+    alert(msg);
+    clearPinInputs();
+    setTimeout(() => {
+        card.classList.remove('shake');
+    }, 500);
+}
+
+// 執行初始化
+document.addEventListener('DOMContentLoaded', () => {
+    initPinLogic();
+});
