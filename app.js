@@ -16,6 +16,23 @@ let currentQuotationId = null;
 let isViewMode = false; // 是否進入訪客觀看模式
 let signaturePad = null; // 手寫簽名物件
 
+// 即時檢查：如果是檢視模式 或 已登入，立刻隱藏登入遮罩防止閃爍
+const isAuth = localStorage.getItem('system_auth') === 'true';
+if (new URLSearchParams(window.location.search).get('view') || isAuth) {
+    if (!new URLSearchParams(window.location.search).get('view')) {
+        // 非檢視模式但已登入
+    } else {
+        isViewMode = true;
+    }
+    // 使用 requestAnimationFrame 確保 DOM 已載入但尚未渲染完成時介入
+    const hideOverlay = () => {
+        const overlay = document.getElementById('login-overlay');
+        if (overlay) overlay.style.display = 'none';
+        else requestAnimationFrame(hideOverlay);
+    };
+    hideOverlay();
+}
+
 // 廠商管理變數
 let vendors = [];
 const vendorSelect = document.getElementById('vendor-select');
@@ -23,6 +40,10 @@ const vendorListBody = document.getElementById('vendor-list-body');
 const vendorForm = document.getElementById('vendor-form');
 const stampPreview = document.getElementById('m-v-stamp-preview');
 const stampImgArea = document.getElementById('vendor-stamp-img');
+const sigImgArea = document.getElementById('sig-client-img'); // 取得甲方簽名圖
+
+// 記錄當前印章縮放大小 (預設 175px)
+let currentStampSize = 175;
 
 // 歷史紀錄排序變數
 let historySort = { field: 'last_updated', direction: 'desc' }; // 預設依最後更新由新到舊
@@ -545,7 +566,7 @@ async function loadHistory() {
 
         historyBody.innerHTML = '';
         if (records.items.length === 0) {
-            historyBody.innerHTML = '<tr><td colspan="6" class="text-center">查無紀錄</td></tr>';
+            historyBody.innerHTML = '<tr><td colspan="7" class="text-center">查無紀錄</td></tr>';
             return;
         }
 
@@ -575,12 +596,17 @@ async function loadHistory() {
                 }
             }
 
+            const statusBadge = q.signature_client
+                ? '<span class="badge rounded-pill bg-success">已回簽</span>'
+                : '<span class="badge rounded-pill bg-danger">未簽名</span>';
+
             tr.innerHTML = `
                 <td>${q.quo_number || '---'}</td>
                 <td>${displayDate}</td>
                 <td>${q.customer_name || '未命名客戶'}</td>
                 <td>NT$ ${displayTotal}</td>
                 <td class="small">${displayUpdated}</td>
+                <td>${statusBadge}</td>
                 <td>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-primary" onclick="event.stopPropagation(); editQuotation('${q.id}')">編輯</button>
@@ -599,7 +625,7 @@ async function loadHistory() {
         const errorData = e.data?.data ? JSON.stringify(e.data.data) : '';
 
         alert(`讀取歷史紀錄失敗！\n錯誤原因：${detail}\n${errorData}\n\n這通常是：\n1. 欄位名稱不符 (例如少了 customer_name)\n2. PocketBase API Rules 未開放 List 讀取權限\n3. 過濾語法錯誤`);
-        historyBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">讀取失敗</td></tr>';
+        historyBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">讀取失敗</td></tr>';
     }
 }
 
@@ -713,6 +739,20 @@ window.editQuotation = async function (id) {
         }
         updateAttachmentLayout();
 
+        // 甲方簽名 (簽章) 還原
+        const sigImg = document.getElementById('sig-client-img');
+        const delSigBtn = document.getElementById('btn-delete-sig');
+        if (q.signature_client) {
+            const sigUrl = getFileUrl('quotations', q, q.signature_client);
+            sigImg.src = sigUrl;
+            sigImg.style.display = 'inline-block';
+            sigImg.style.width = `${currentStampSize}px`; // 同步大小
+            if (delSigBtn) delSigBtn.style.display = 'block';
+        } else {
+            sigImg.style.display = 'none';
+            if (delSigBtn) delSigBtn.style.display = 'none';
+        }
+
         const historyModal = document.getElementById('historyModal');
         if (historyModal) {
             const modalInstance = bootstrap.Modal.getInstance(historyModal);
@@ -778,10 +818,14 @@ async function initQuotationInfo() {
     await generateQuoNumber(today);
 
     // 強制清空初始內容，避免隱形空格干擾 placeholder
-    ['c-name', 'c-location', 'c-contact', 'c-phone'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerText = "";
-    });
+    // 修正：如果是檢視模式，則跳過清空動作，以免覆蓋剛讀取的資料
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('view')) {
+        ['c-name', 'c-location', 'c-contact', 'c-phone'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = "";
+        });
+    }
 
     // 監聽日期變更
     dateInput.addEventListener('change', async (e) => {
@@ -943,9 +987,13 @@ vendorSelect.onchange = function () {
 // 處理印章縮放
 document.getElementById('stamp-scale').addEventListener('input', function (e) {
     const size = e.target.value;
+    currentStampSize = size; // 更新全域變數
     const valEl = document.getElementById('stamp-scale-val');
     if (valEl) valEl.innerText = size;
-    stampImgArea.style.width = `${size}px`;
+
+    // 同時作用於乙方印章與甲方簽署
+    if (stampImgArea) stampImgArea.style.width = `${size}px`;
+    if (sigImgArea) sigImgArea.style.width = `${size}px`;
 });
 // 處理列印時的檔名 (公司名稱_工程名稱)
 window.addEventListener('beforeprint', () => {
@@ -991,7 +1039,8 @@ async function checkViewMode() {
         isViewMode = true;
         currentQuotationId = viewId;
         document.getElementById('ui-controls').style.display = 'none';
-        document.getElementById('btn-client-sign').style.display = 'inline-block';
+        // 隱藏原本的按鈕，改由簽名處區塊處理點擊
+        document.getElementById('btn-client-sign').style.display = 'none';
         const toolbar = document.getElementById('view-mode-toolbar');
         if (toolbar) toolbar.style.display = 'flex';
 
@@ -1075,24 +1124,38 @@ async function loadQuotationForView(id) {
             }
         }
 
-        // 甲方簽名
+        // 甲方簽名處理
+        const sigDisplay = document.getElementById('sig-client-display');
+        const sigImg = document.getElementById('sig-client-img');
+
         if (q.signature_client) {
             const sigUrl = getFileUrl('quotations', q, q.signature_client);
-            document.getElementById('sig-client-img').src = sigUrl;
-            document.getElementById('sig-client-img').style.display = 'inline-block';
-            document.getElementById('btn-client-sign').style.display = 'none';
+            sigImg.src = sigUrl;
+            sigImg.style.display = 'inline-block';
+            sigImg.style.width = `${currentStampSize}px`; // 同步大小
+            sigDisplay.classList.remove('needs-signature');
+            // 移除點擊事件 (如果存在)
+            sigDisplay.onclick = null;
+        } else {
+            sigImg.style.display = 'none';
+            sigDisplay.classList.add('needs-signature');
+            // 點擊後開啟簽名 Modal
+            sigDisplay.onclick = () => {
+                const modal = new bootstrap.Modal(document.getElementById('signatureModal'));
+                modal.show();
+            };
         }
 
         calculateTotals();
         setupDynamicSync();
 
-        // 禁止所有編輯
+        // 禁止所有編輯 (排除 Modal 內的輸入框)
         const editables = document.querySelectorAll('[contenteditable="true"]');
         editables.forEach(el => {
             el.setAttribute('contenteditable', 'false');
             el.style.border = 'none';
         });
-        const inputs = document.querySelectorAll('input, select, textarea');
+        const inputs = document.querySelectorAll('input:not(.modal input), select:not(.modal select), textarea:not(.modal textarea)');
         inputs.forEach(el => {
             el.disabled = true;
             el.style.backgroundColor = 'transparent';
@@ -1126,11 +1189,11 @@ function initSignaturePad() {
 async function submitClientSignature() {
     if (!currentQuotationId) return;
 
-    const activeTab = document.querySelector('#sigTab .nav-link.active').id;
-    let signatureBlob = null;
+    // 更強健的標籤頁判斷方式：檢查哪個區塊具備 .active
+    const isHandTab = document.getElementById('sig-hand').classList.contains('show');
 
-    if (activeTab === 'hand-tab') {
-        if (signaturePad.isEmpty()) {
+    if (isHandTab) {
+        if (!signaturePad || signaturePad.isEmpty()) {
             alert('請先在板上簽名');
             return;
         }
@@ -1140,7 +1203,7 @@ async function submitClientSignature() {
         signatureBlob = await res.blob();
     } else {
         const fileInput = document.getElementById('sig-file');
-        if (fileInput.files.length === 0) {
+        if (!fileInput || fileInput.files.length === 0) {
             alert('請先選擇簽名圖檔');
             return;
         }
@@ -1165,6 +1228,29 @@ async function submitClientSignature() {
         alert('簽名回傳失敗，請稍後再試');
         document.getElementById('btn-submit-sig').disabled = false;
         document.getElementById('btn-submit-sig').innerText = '確認提交並回傳';
+    }
+}
+
+
+async function deleteClientSignature() {
+    if (!currentQuotationId) {
+        alert('請先載入或儲存報價單');
+        return;
+    }
+    if (!confirm('確定要刪除此份報價單的甲方簽章嗎？')) return;
+
+    try {
+        await pb.collection('quotations').update(currentQuotationId, {
+            signature_client: null,
+            signed_at: null
+        });
+        alert('簽章已成功刪除！');
+        // 重新載入當前報價單內容以更新 UI
+        editQuotation(currentQuotationId);
+        loadHistory(); // 同步更新歷史紀錄狀態
+    } catch (e) {
+        console.error('刪除簽章失敗:', e);
+        alert('刪除失敗: ' + e.message);
     }
 }
 
@@ -1201,6 +1287,10 @@ if (sSlider) sSlider.value = initScale;
 document.getElementById('btn-share').addEventListener('click', generateShareLink);
 document.getElementById('btn-clear-sig').addEventListener('click', () => signaturePad.clear());
 document.getElementById('btn-submit-sig').addEventListener('click', submitClientSignature);
+document.getElementById('btn-delete-sig').addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteClientSignature();
+});
 
 // 簽名圖片預覽
 document.getElementById('sig-file').addEventListener('change', function (e) {

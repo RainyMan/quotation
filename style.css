@@ -295,16 +295,51 @@ body {
     background: transparent !important;
     display: flex;
     align-items: center;
-    justify-content: center;
-    overflow: hidden;
+    position: relative;
+    /* 移除 overflow: hidden 讓印章可以超出容器 */
+    overflow: visible;
+    height: auto;
+    /* Added height: auto */
     min-height: 60px;
+    z-index: 10;
 }
 
+#vendor-stamp-img,
 #sig-client-img {
     mix-blend-mode: multiply;
     /* 讓白底簽名透明化 */
-    max-width: 100%;
+    max-width: none !important;
+    max-height: none !important;
+    height: auto !important;
+    /* 強制等比例放大 */
     filter: contrast(1.2);
+    position: absolute;
+    top: -30px;
+    /* 向上偏移，讓印章蓋在橫線上 */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+
+/* 檢視模式下，甲方簽名處的虛線框與互動樣式 */
+.view-mode #sig-client-display.needs-signature {
+    border: 2px dashed #0d6efd !important;
+    background: rgba(13, 110, 253, 0.05) !important;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.view-mode #sig-client-display.needs-signature:hover {
+    background: rgba(13, 110, 253, 0.1) !important;
+    border-color: #0a58ca !important;
+    transform: scale(1.02);
+}
+
+.view-mode #sig-client-display.needs-signature::after {
+    content: '請點擊此處進行簽名或蓋章';
+    font-size: 12px;
+    color: #0d6efd;
+    font-weight: bold;
 }
 
 /* View Mode Styling */
