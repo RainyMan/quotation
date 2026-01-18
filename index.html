@@ -241,11 +241,13 @@
 
             <!-- 簽章區 -->
             <div class="row mt-5 pt-5 text-center">
-                <div class="col-6 border-end">
-                    <p class="mb-5 text-muted fw-bold"><span id="sig-c-name"></span>（甲方）：</p>
+                <div class="col-6 border-end d-flex flex-column align-items-center">
+                    <p class="mb-5 text-muted fw-bold text-center" style="min-height: 1.5em;"><span
+                            id="sig-c-name"></span>（甲方）：</p>
                     <!-- 甲方電子簽名顯示區 -->
-                    <div id="sig-client-display" class="text-center position-relative"
-                        style="height: 60px; margin-bottom: 10px; overflow: visible; z-index: 100;">
+                    <div id="sig-client-display"
+                        class="position-relative d-flex justify-content-center align-items-center"
+                        style="height: 80px; width: 100%; margin-bottom: 5px; overflow: visible; z-index: 100;">
                         <img id="sig-client-img" src="" style="display: none;">
                         <button id="btn-delete-sig"
                             class="btn btn-sm btn-danger no-print position-absolute top-0 end-0 py-0 px-1"
@@ -257,19 +259,24 @@
                             <i class="bi bi-pencil-fill me-1"></i> 甲方線上簽名
                         </button>
                     </div>
-                    <div style="border-bottom: 2px solid #ccc; width: 80%; margin: 0 auto 10px;"></div>
-                    <p class="small text-muted">(簽章)</p>
-                </div>
-                <div class="col-6">
-                    <p class="mb-5 text-muted fw-bold"><span id="sig-v-name">您的公司名稱</span>（乙方）：</p>
-                    <!-- 簽名預覽區 -->
-                    <div id="signature-preview" class="position-relative"
-                        style="height: 60px; overflow: visible; z-index: 100;">
-                        <img id="vendor-stamp-img" src="" class="position-absolute start-50 translate-middle-x"
-                            style="top: -10px; opacity: 0.95; display: none; z-index: 1;">
+                    <div style="width: 80%; max-width: 250px;">
+                        <div style="border-bottom: 2px solid #ccc; width: 100%; margin: 0 auto 5px;"></div>
+                        <p class="small text-muted text-center mb-0" style="width: 100%;">(簽章)</p>
                     </div>
-                    <div style="border-bottom: 2px solid #ccc; width: 80%; margin: 0 auto 10px;"></div>
-                    <p class="small text-muted">(簽章)</p>
+                </div>
+                <div class="col-6 d-flex flex-column align-items-center">
+                    <p class="mb-5 text-muted fw-bold text-center" style="min-height: 1.5em;"><span
+                            id="sig-v-name">您的公司名稱</span>（乙方）：</p>
+                    <!-- 簽名預覽區 -->
+                    <div id="signature-preview"
+                        class="position-relative d-flex justify-content-center align-items-center"
+                        style="height: 80px; width: 100%; margin-bottom: 5px; overflow: visible; z-index: 100;">
+                        <img id="vendor-stamp-img" src="" style="opacity: 0.95; display: none; z-index: 1;">
+                    </div>
+                    <div style="width: 80%; max-width: 250px;">
+                        <div style="border-bottom: 2px solid #ccc; width: 100%; margin: 0 auto 5px;"></div>
+                        <p class="small text-muted text-center mb-0" style="width: 100%;">(簽章)</p>
+                    </div>
                 </div>
             </div>
 

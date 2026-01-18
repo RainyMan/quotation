@@ -311,16 +311,10 @@ body {
 #sig-client-img {
     mix-blend-mode: multiply;
     /* 讓白底簽名透明化 */
-    max-width: none !important;
-    max-height: none !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
     height: auto !important;
-    /* 強制等比例放大 */
     filter: contrast(1.2);
-    position: absolute;
-    top: -30px;
-    /* 向上偏移，讓印章蓋在橫線上 */
-    left: 50%;
-    transform: translateX(-50%);
     z-index: 10;
 }
 

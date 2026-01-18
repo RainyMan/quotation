@@ -687,7 +687,14 @@ window.editQuotation = async function (id) {
         // 還原基本資訊 (加入安全檢查)
         const safeSetText = (id, val) => {
             const el = document.getElementById(id);
-            if (el) el.innerText = val || "";
+            if (el) {
+                el.innerText = val || "";
+                // 額外同步：如果是 c-name，也同步到 sig-c-name
+                if (id === 'c-name') {
+                    const sigCName = document.getElementById('sig-c-name');
+                    if (sigCName) sigCName.innerText = val || "";
+                }
+            }
             else console.warn(`找不到元素: ${id}`);
         };
         const safeSetValue = (id, val) => {
@@ -1097,7 +1104,11 @@ async function loadQuotationForView(id) {
 
         // 填充基本資訊
         document.getElementById('quo-number').innerText = q.quo_number;
-        document.getElementById('c-name').innerText = (q.customer_name || "").trim();
+        const customerName = (q.customer_name || "").trim();
+        document.getElementById('c-name').innerText = customerName;
+        const sigCName = document.getElementById('sig-c-name');
+        if (sigCName) sigCName.innerText = customerName;
+
         document.getElementById('c-location').innerText = (q.project_name || q.project_location || "").trim();
         document.getElementById('c-contact').innerText = (q.customer_contact || "").trim();
         document.getElementById('c-phone').innerText = (q.customer_phone || "").trim();
