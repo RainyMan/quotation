@@ -995,6 +995,18 @@ async function checkViewMode() {
         const toolbar = document.getElementById('view-mode-toolbar');
         if (toolbar) toolbar.style.display = 'flex';
 
+        // 監聽列印事件以自動修改檔名 (document.title)
+        window.onbeforeprint = () => {
+            const company = document.getElementById('company-name')?.innerText?.trim() || "大馬道路";
+            const project = document.getElementById('project-name')?.innerText?.trim() || "工程報價";
+            const date = document.getElementById('quotation-date')?.innerText?.trim() || "";
+            document.title = `${company}_${project}_${date}`.replace(/[\/\?<>\\:\*\|":]/g, ''); // 移除非法字元
+        };
+
+        window.onafterprint = () => {
+            document.title = "大馬道路報價系統";
+        };
+
         // 進入唯讀模式
         document.body.classList.add('view-mode');
 
