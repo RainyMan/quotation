@@ -96,8 +96,8 @@ body {
 
 .attachment-item img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
+    display: block;
 }
 
 .layout-1 .attachment-item {
@@ -199,33 +199,26 @@ body {
         display: inline-block !important;
     }
 
-    .no-print,
-    #view-mode-toolbar {
-        display: none !important;
-    }
-
     .a4-page {
         width: 100% !important;
         min-height: auto !important;
-        margin: 0 !important;
+        margin: auto !important;
         box-shadow: none !important;
         padding: 5mm !important;
-        /* 內部間距縮小 */
+        /* 縮小邊距以增加可用空間 */
         background: #fff !important;
-        background-color: #fff !important;
         transform: scale(0.98);
-        /* 稍微縮小以確保安全契合 */
-        transform-origin: top center;
+        /* 稍微縮小以確保內容不被截斷 */
+        transform-origin: center center;
     }
 
-    /* 壓縮表格空間 */
+    /* 壓縮表格與間距以確保適配一頁 */
     .table th,
     .table td {
         padding: 4px 6px !important;
         font-size: 11pt !important;
     }
 
-    /* 壓縮簽章與說明空間 */
     .mt-5,
     .pt-5 {
         margin-top: 1rem !important;
@@ -236,12 +229,22 @@ body {
         margin-bottom: 0.5rem !important;
     }
 
-    .attachment-item {
-        max-height: 150px !important;
-        /* 限制照片高度以節省空間 */
+    .no-print,
+    #view-mode-toolbar {
+        display: none !important;
     }
 
-    /* 移除 Bootstrap 的 bg-light 背景色與陰影 */
+    .attachment-item {
+        max-height: none !important;
+        /* 讓照片完整顯示 */
+    }
+
+    .attachment-item img {
+        max-height: 400px !important;
+        /* 限制單張照片高度，防止一張圖佔滿整頁 */
+        object-fit: contain !important;
+    }
+
     .bg-light,
     .bg-white,
     .shadow-lg,
@@ -363,6 +366,15 @@ body {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
+    /* iOS 禁用狀態文字填色與透明度修正 */
+    -webkit-text-fill-color: #333 !important;
+    opacity: 1 !important;
+}
+
+/* 隱藏 Chrome/Safari 的 datalist 藍色下拉箭頭 */
+.view-mode input::-webkit-calendar-picker-indicator {
+    display: none !important;
+    -webkit-appearance: none;
 }
 
 /* 檢視模式下顯示日期 display */

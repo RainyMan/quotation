@@ -174,6 +174,7 @@ function updateRowNumbers() {
 const attachmentArea = document.getElementById('quotation-attachments');
 let uploadedImages = []; // 存儲圖片 DataURL (預覽用)
 let selectedFiles = []; // 存儲實體 File 物件 (上傳用)
+let keepExistingImages = []; // 存儲已存在的檔案名稱 (PocketBase 用)
 
 function updateAttachmentLayout() {
     attachmentArea.innerHTML = '';
@@ -202,8 +203,14 @@ function updateAttachmentLayout() {
 }
 
 window.removeImage = function (index) {
+    // 判斷移除的是「既有檔案」還是「新選檔案」
+    const existingCount = keepExistingImages.length;
+    if (index < existingCount) {
+        keepExistingImages.splice(index, 1);
+    } else {
+        selectedFiles.splice(index - existingCount, 1);
+    }
     uploadedImages.splice(index, 1);
-    selectedFiles.splice(index, 1);
     updateAttachmentLayout();
 };
 
@@ -455,6 +462,14 @@ window.saveQuotation = async function (isCopy = false) {
 
         // 取得 image-upload 中的真實 File 物件 (注意：此前的 uploadedImages 是 DataURL，我們要改用原始檔案)
         const fileInput = document.getElementById('image-upload-files') || { files: [] }; // 假設我們調整 HTML 使用隱藏 input 存檔案
+        // 處理照片：保留舊的 + 新增新的
+        if (keepExistingImages.length > 0) {
+            // PocketBase 支援直接傳入檔名來保留舊檔案
+            keepExistingImages.forEach(name => {
+                formData.append('images', name);
+            });
+        }
+
         // 取得已選取的實體檔案
         for (let file of selectedFiles) {
             formData.append('images', file);
@@ -729,12 +744,14 @@ window.editQuotation = async function (id) {
 
         // 還原圖片 (相容 images 或 photos 欄位)
         uploadedImages = [];
-        selectedFiles = []; // 清空之前的檔案
+        selectedFiles = [];
+        keepExistingImages = []; // 重置
         const imgs = q.images || q.photos || [];
         if (Array.isArray(imgs)) {
             imgs.forEach(img => {
                 const url = getFileUrl('quotations', q, img);
                 uploadedImages.push(url);
+                keepExistingImages.push(img); // 記錄名稱以便後續更新保留
             });
         }
         updateAttachmentLayout();
@@ -995,15 +1012,27 @@ document.getElementById('stamp-scale').addEventListener('input', function (e) {
     if (stampImgArea) stampImgArea.style.width = `${size}px`;
     if (sigImgArea) sigImgArea.style.width = `${size}px`;
 });
-// 處理列印時的檔名 (公司名稱_工程名稱)
+
+// 輔助函式：取得列印檔名 (甲方公司名稱_工程名稱_日期)
+function getPrintFilename() {
+    const company = document.getElementById('c-name').innerText.trim() || "甲方公司";
+    const project = document.getElementById('c-location').innerText.trim() || "工程報價";
+
+    const now = new Date();
+    const dateStr = now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0');
+
+    return `${company}_${project}_${dateStr}`.replace(/[\/\?<>\\:\*\|":]/g, '_');
+}
+
+// 處理列印時的檔名
 window.addEventListener('beforeprint', () => {
-    const company = document.getElementById('c-name').innerText.trim();
-    const project = document.getElementById('c-location').innerText.trim();
     window._oldTitle = document.title;
-    document.title = `${company}_${project}`;
+    document.title = getPrintFilename();
 });
 window.addEventListener('afterprint', () => {
-    document.title = window._oldTitle || "專業報價系統 | Quotation System";
+    document.title = window._oldTitle || "大馬道路報價系統";
 });
 
 // --- 11. 分享連結與電子簽章邏輯 ---
@@ -1045,15 +1074,14 @@ async function checkViewMode() {
         if (toolbar) toolbar.style.display = 'flex';
 
         // 監聽列印事件以自動修改檔名 (document.title)
+        // 已在全域設置，此處保留邏輯一致性即可
         window.onbeforeprint = () => {
-            const company = document.getElementById('company-name')?.innerText?.trim() || "大馬道路";
-            const project = document.getElementById('project-name')?.innerText?.trim() || "工程報價";
-            const date = document.getElementById('quotation-date')?.innerText?.trim() || "";
-            document.title = `${company}_${project}_${date}`.replace(/[\/\?<>\\:\*\|":]/g, ''); // 移除非法字元
+            window._oldTitle = document.title;
+            document.title = getPrintFilename();
         };
 
         window.onafterprint = () => {
-            document.title = "大馬道路報價系統";
+            document.title = window._oldTitle || "大馬道路報價系統";
         };
 
         // 進入唯讀模式
