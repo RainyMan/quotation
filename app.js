@@ -25,7 +25,7 @@ const stampPreview = document.getElementById('m-v-stamp-preview');
 const stampImgArea = document.getElementById('vendor-stamp-img');
 
 // 歷史紀錄排序變數
-let historySort = { field: 'updated', direction: 'desc' }; // 預設依最後更新由新到舊
+let historySort = { field: 'last_updated', direction: 'desc' }; // 預設依最後更新由新到舊
 
 
 // --- 3. 國字大寫轉換與備註功能 ---
@@ -109,6 +109,34 @@ function createRow() {
         tr.remove();
         calculateTotals();
         updateRowNumbers();
+    });
+
+    const nameInput = tr.querySelector('.item-name');
+    nameInput.addEventListener('input', () => {
+        const val = nameInput.value.trim();
+
+        // 優先嘗試解析 "品項 (單位)" 格式 (從下拉選單選取的)
+        const match = val.match(/^(.+)\s\((.+)\)$/);
+        if (match) {
+            const pureName = match[1].trim();
+            const pureUnit = match[2].trim();
+            const found = itemDictionary.find(i => i.name === pureName && (i.unit || '式') === pureUnit);
+            if (found) {
+                nameInput.value = found.name; // 還原為純名稱
+                tr.querySelector('.item-unit').value = found.unit || '式';
+                tr.querySelector('.item-price').value = found.price || 0;
+                calculateTotals();
+                return;
+            }
+        }
+
+        // 若不匹配格式 (手動輸入中)，按名稱搜尋字典
+        const foundByName = itemDictionary.find(i => i.name === val);
+        if (foundByName) {
+            tr.querySelector('.item-unit').value = foundByName.unit || '式';
+            tr.querySelector('.item-price').value = foundByName.price || 0;
+            calculateTotals();
+        }
     });
 
     itemsBody.appendChild(tr);
@@ -257,11 +285,13 @@ async function updateItemsDatalist() {
     const datalist = document.getElementById('items-datalist');
     try {
         const records = await pb.collection('items').getFullList({ sort: 'name', '$autoCancel': false });
-        itemDictionary = records.map(r => r.name);
+        // 儲存完整資訊供連動使用
+        itemDictionary = records.map(r => ({ name: r.name, unit: r.unit, price: r.default_price }));
         datalist.innerHTML = '';
         records.forEach(r => {
             const option = document.createElement('option');
-            option.value = r.name;
+            // 將 value 設為具備唯一性的格式，以便輸入時解析
+            option.value = `${r.name} (${r.unit || '式'})`;
             datalist.appendChild(option);
         });
     } catch (e) {
@@ -339,20 +369,47 @@ window.saveQuotation = async function (isCopy = false) {
         const items = [];
         const rows = itemsBody.querySelectorAll('tr');
 
+        const processedKeys = new Set();
         for (const row of rows) {
-            const name = row.querySelector('.item-name').value;
+            const name = row.querySelector('.item-name').value.trim();
+            const unit = row.querySelector('.item-unit').value.trim();
+            const price = parseFloat(row.querySelector('.item-price').value) || 0;
+
             if (name) {
                 items.push({
                     name: name,
-                    unit: row.querySelector('.item-unit').value,
+                    unit: unit,
                     qty: parseFloat(row.querySelector('.item-qty').value),
-                    price: parseFloat(row.querySelector('.item-price').value),
+                    price: price,
                     note: row.querySelector('.item-note').value
                 });
 
-                // 自動同步新品項到 items collection
-                if (!itemDictionary.includes(name)) {
-                    await pb.collection('items').create({ name: name, unit: row.querySelector('.item-unit').value, default_price: parseFloat(row.querySelector('.item-price').value) }, { '$autoCancel': false });
+                // 自動同步新品項或更新單價到 items collection
+                const itemKey = `${name}|${unit}`;
+                if (!processedKeys.has(itemKey)) {
+                    try {
+                        const filter = `name="${name}" && unit="${unit}"`;
+                        const existing = await pb.collection('items').getFirstListItem(filter).catch(() => null);
+
+                        if (!existing) {
+                            // 新增品項
+                            await pb.collection('items').create({
+                                name: name,
+                                unit: unit,
+                                default_price: price
+                            }, { '$autoCancel': false });
+                            itemDictionary.push({ name, unit, price });
+                        } else if (existing.default_price !== price) {
+                            // 名稱單位相同但單價改變 -> 更新資料庫預設值
+                            await pb.collection('items').update(existing.id, {
+                                default_price: price
+                            }, { '$autoCancel': false });
+                            // 更新本地快取
+                            const localItem = itemDictionary.find(i => i.name === name && (i.unit || '式') === unit);
+                            if (localItem) localItem.price = price;
+                        }
+                        processedKeys.add(itemKey);
+                    } catch (err) { console.warn('同步或更新品項失敗', err); }
                 }
             }
         }
@@ -501,7 +558,22 @@ async function loadHistory() {
 
             // 優先使用自定義的 last_updated，其次是系統 updated，最後是 created
             const rawUpdated = q.last_updated || q.updated || q.created;
-            const displayUpdated = rawUpdated ? rawUpdated.substring(0, 16).replace('T', ' ') : '---';
+            let displayUpdated = '---';
+            if (rawUpdated) {
+                try {
+                    displayUpdated = new Date(rawUpdated).toLocaleString('zh-TW', {
+                        timeZone: 'Asia/Taipei',
+                        hour12: false,
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }).replace(/\//g, '-');
+                } catch (e) {
+                    displayUpdated = String(rawUpdated).substring(0, 16).replace('T', ' ');
+                }
+            }
 
             tr.innerHTML = `
                 <td>${q.quo_number || '---'}</td>
@@ -586,8 +658,8 @@ window.editQuotation = async function (id) {
         safeSetText('quo-number', q.quo_number);
         safeSetText('c-name', q.customer_name);
         safeSetText('c-location', q.project_location || q.project_name);
-        safeSetText('c-contact', q.customer_contact || "王先生");
-        safeSetText('c-phone', q.customer_phone || "0912-345-678");
+        safeSetText('c-contact', q.customer_contact || "");
+        safeSetText('c-phone', q.customer_phone || "");
 
         const dateVal = q.date ? q.date.substring(0, 10) : "";
         safeSetValue('c-date-input', dateVal);
@@ -704,6 +776,12 @@ async function initQuotationInfo() {
 
     // 初始生成單號
     await generateQuoNumber(today);
+
+    // 強制清空初始內容，避免隱形空格干擾 placeholder
+    ['c-name', 'c-location', 'c-contact', 'c-phone'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = "";
+    });
 
     // 監聽日期變更
     dateInput.addEventListener('change', async (e) => {
@@ -914,6 +992,8 @@ async function checkViewMode() {
         currentQuotationId = viewId;
         document.getElementById('ui-controls').style.display = 'none';
         document.getElementById('btn-client-sign').style.display = 'inline-block';
+        const toolbar = document.getElementById('view-mode-toolbar');
+        if (toolbar) toolbar.style.display = 'flex';
 
         // 進入唯讀模式
         document.body.classList.add('view-mode');
@@ -928,10 +1008,10 @@ async function loadQuotationForView(id) {
 
         // 填充基本資訊
         document.getElementById('quo-number').innerText = q.quo_number;
-        document.getElementById('c-name').innerText = q.customer_name;
-        document.getElementById('c-location').innerText = q.project_name || q.project_location;
-        document.getElementById('c-contact').innerText = q.customer_contact || "";
-        document.getElementById('c-phone').innerText = q.customer_phone || "";
+        document.getElementById('c-name').innerText = (q.customer_name || "").trim();
+        document.getElementById('c-location').innerText = (q.project_name || q.project_location || "").trim();
+        document.getElementById('c-contact').innerText = (q.customer_contact || "").trim();
+        document.getElementById('c-phone').innerText = (q.customer_phone || "").trim();
         document.getElementById('c-date-input').value = q.date ? q.date.substring(0, 10) : '';
         document.getElementById('c-date-display').innerText = q.date ? q.date.substring(0, 10) : '';
 

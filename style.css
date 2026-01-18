@@ -66,6 +66,19 @@ body {
     box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2);
 }
 
+/* Placeholder for contenteditable */
+[contenteditable][data-placeholder]:empty:before {
+    content: attr(data-placeholder);
+    color: #ccc;
+    font-weight: normal;
+    font-style: italic;
+    cursor: text;
+}
+
+[contenteditable][data-placeholder]:focus:before {
+    content: "" !important;
+}
+
 /* Image Attachment Layouts */
 #quotation-attachments {
     width: 100%;
@@ -166,6 +179,11 @@ body {
 }
 
 @media print {
+    @page {
+        size: A4;
+        margin: 8mm;
+        /* 稍微縮小邊距以容納更多內容 */
+    }
 
     /* 強制所有背景為白色，防止 Bootstrap 或系統預設灰色 */
     html,
@@ -174,24 +192,53 @@ body {
         background-color: #fff !important;
         margin: 0;
         padding: 0;
+        width: 210mm;
     }
 
     .print-only {
         display: inline-block !important;
     }
 
-    .no-print {
+    .no-print,
+    #view-mode-toolbar {
         display: none !important;
     }
 
     .a4-page {
         width: 100% !important;
-        height: auto;
+        min-height: auto !important;
         margin: 0 !important;
         box-shadow: none !important;
-        padding: 0 !important;
+        padding: 5mm !important;
+        /* 內部間距縮小 */
         background: #fff !important;
         background-color: #fff !important;
+        transform: scale(0.98);
+        /* 稍微縮小以確保安全契合 */
+        transform-origin: top center;
+    }
+
+    /* 壓縮表格空間 */
+    .table th,
+    .table td {
+        padding: 4px 6px !important;
+        font-size: 11pt !important;
+    }
+
+    /* 壓縮簽章與說明空間 */
+    .mt-5,
+    .pt-5 {
+        margin-top: 1rem !important;
+        padding-top: 1rem !important;
+    }
+
+    #quotation-attachments {
+        margin-bottom: 0.5rem !important;
+    }
+
+    .attachment-item {
+        max-height: 150px !important;
+        /* 限制照片高度以節省空間 */
     }
 
     /* 移除 Bootstrap 的 bg-light 背景色與陰影 */
@@ -201,6 +248,7 @@ body {
     .p-5 {
         background-color: #fff !important;
         box-shadow: none !important;
+        padding: 10px !important;
     }
 
     .table-responsive {
@@ -260,7 +308,7 @@ body {
 }
 
 /* View Mode Styling */
-.view-mode .no-print {
+.view-mode .no-print:not(#view-mode-toolbar) {
     display: none !important;
 }
 

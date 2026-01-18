@@ -19,6 +19,16 @@
 
 <body class="bg-light">
 
+    <!-- 分享頁面工具列 (僅檢視模式顯示) -->
+    <div id="view-mode-toolbar" class="no-print bg-white border-bottom shadow-sm py-2 position-sticky top-0"
+        style="z-index: 2000; display: none;">
+        <div class="container d-flex justify-content-between align-items-center">
+            <span class="text-primary fw-bold"><i class="bi bi-info-circle me-2"></i>線上報價單</span>
+            <button class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer me-2"></i>列印報價單 (可存
+                PDF)</button>
+        </div>
+    </div>
+
     <!-- UI 控制區 (列印時隱藏) -->
     <div class="container my-4 no-print" id="ui-controls">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -93,11 +103,13 @@
                         <div class="row g-3">
                             <div class="col-6">
                                 <label class="text-primary fw-bold small mb-1 no-print">公司名稱</label>
-                                <div id="c-name" contenteditable="true" class="fw-bold fs-4">請輸入公司名稱</div>
+                                <div id="c-name" contenteditable="true" class="fw-bold fs-4" data-placeholder="請輸入公司名稱">
+                                </div>
                             </div>
                             <div class="col-6">
                                 <label class="text-primary fw-bold small mb-1 no-print">工程名稱</label>
-                                <div id="c-location" contenteditable="true" class="fw-bold fs-4">請輸入工程名稱</div>
+                                <div id="c-location" contenteditable="true" class="fw-bold fs-4"
+                                    data-placeholder="請輸入工程名稱"></div>
                             </div>
                             <!-- 下一排分割成兩欄 -->
                             <div class="col-5 bg-light">
@@ -107,9 +119,11 @@
                                 <span id="c-date-display" class="print-only"></span>
                             </div>
                             <div class="col-7 text-end" style="white-space: nowrap;">
-                                <strong>聯絡人：</strong> <span id="c-contact" contenteditable="true">王先生</span>
+                                <strong>聯絡人：</strong> <span id="c-contact" contenteditable="true"
+                                    data-placeholder="請輸入聯絡人"></span>
                                 <span class="mx-2">|</span>
-                                <strong>電話：</strong> <span id="c-phone" contenteditable="true">0912-345-678</span>
+                                <strong>電話：</strong> <span id="c-phone" contenteditable="true"
+                                    data-placeholder="請輸入電話"></span>
                             </div>
                         </div>
                     </div>
@@ -141,18 +155,6 @@
                                     <button class="btn btn-sm btn-outline-secondary flex-grow-1" id="add-row">
                                         <i class="bi bi-plus-circle me-1"></i> 新增品項
                                     </button>
-                                    <div class="dropdown" style="width: 200px;">
-                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle w-100"
-                                            type="button" id="itemDropdown" data-bs-toggle="dropdown"
-                                            aria-expanded="false">
-                                            <i class="bi bi-list-ul me-1"></i> 品項管理
-                                        </button>
-                                        <div class="dropdown-menu p-3 w-100" aria-labelledby="itemDropdown"
-                                            id="item-presets-container"
-                                            style="max-height: 300px; overflow-y: auto; min-width: 250px;">
-                                            <!-- JS 動態加載品項 -->
-                                        </div>
-                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -164,7 +166,7 @@
             <div class="row g-4 border-top pt-4 mb-4">
                 <div class="col-7">
                     <div class="mb-3">
-                        <label class="fw-bold mb-1">金額大寫：</label>
+                        <label class="fw-bold mb-1">總價新台幣：</label>
                         <div class="p-2 border rounded bg-light fw-bold text-dark h5" id="total-chinese">
                             零元整
                         </div>
@@ -219,7 +221,7 @@
             <!-- 簽章區 -->
             <div class="row mt-5 pt-5 text-center">
                 <div class="col-6 border-end">
-                    <p class="mb-5 text-muted fw-bold"><span id="sig-c-name">請輸入公司名稱</span>（甲方）：</p>
+                    <p class="mb-5 text-muted fw-bold"><span id="sig-c-name"></span>（甲方）：</p>
                     <!-- 甲方電子簽名顯示區 -->
                     <div id="sig-client-display" class="text-center position-relative"
                         style="height: 60px; margin-bottom: 10px;">
@@ -249,14 +251,28 @@
         </div>
     </div>
 
-    <!-- 獨立印章控制項 (掛在右側) -->
-    <div class="no-print position-fixed end-0 top-50 translate-middle-y me-4" style="z-index: 1050;">
+    <!-- 獨立印章與品項控制項 (掛在右側) -->
+    <div class="no-print position-fixed end-0 top-50 translate-middle-y me-4 d-flex flex-column gap-3"
+        style="z-index: 1050;">
+        <!-- 印章縮放 -->
         <div class="card shadow-sm border-primary" style="width: 60px; background: rgba(255,255,255,0.9);">
             <div class="card-body p-2 text-center">
                 <small class="text-primary fw-bold" style="font-size: 10px; writing-mode: vertical-rl;">印章縮放 <span
                         id="stamp-scale-val">175</span>%</small>
                 <input type="range" id="stamp-scale" min="50" max="250" value="175" class="form-range mt-3"
                     style="transform: rotate(270deg); width: 80px; height: 4px; cursor: ns-resize; margin: 30px 0;">
+            </div>
+        </div>
+        <!-- 品項管理 -->
+        <div class="dropdown">
+            <button class="btn btn-primary shadow-sm" style="width: 60px; height: 60px; border-radius: 50%;"
+                type="button" id="itemDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-list-ul fs-4"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end p-3 shadow-lg border-0" aria-labelledby="itemDropdown"
+                id="item-presets-container"
+                style="max-height: 400px; overflow-y: auto; min-width: 280px; border-radius: 12px;">
+                <!-- JS 動態加載品項 -->
             </div>
         </div>
     </div>
