@@ -1,5 +1,5 @@
 // --- 1. PocketBase 初始化 ---
-const pb = new PocketBase('https://q.tarmacroad.com'); // Synology 外網路徑
+const pb = new PocketBase('https://pocketbase.tarmacroad.com'); // Synology 外網路徑
 
 // --- 2. 核心變數與元素 ---
 const itemsBody = document.getElementById('items-body');
@@ -206,7 +206,7 @@ imageUpload.addEventListener('change', function (e) {
 // 取得廠商印章 URL 的輔助函式
 function getFileUrl(collection, record, filename) {
     if (!filename) return '';
-    return `https://q.tarmacroad.com/api/files/${collection}/${record.id}/${filename}`;
+    return `https://pocketbase.tarmacroad.com/api/files/${collection}/${record.id}/${filename}`;
 }
 
 async function loadMemoPresets() {
