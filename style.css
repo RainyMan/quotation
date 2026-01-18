@@ -456,20 +456,6 @@ body {
 
 /* --- Mobile RWD --- */
 @media (max-width: 768px) {
-    .container {
-        padding-left: 10px !important;
-        padding-right: 10px !important;
-    }
-
-    .a4-page {
-        width: 100% !important;
-        min-height: auto !important;
-        padding: 15px !important;
-        transform: none !important;
-        /* 手機瀏覽不縮放 */
-        box-shadow: none !important;
-    }
-
     .login-card {
         padding: 2rem 1.5rem !important;
         width: 90% !important;
@@ -488,17 +474,6 @@ body {
     /* 隱藏非必要裝飾 */
     #login-overlay::before {
         display: none;
-    }
-
-    /* 表格在手機上可橫向捲動 */
-    .table-responsive {
-        border: 0;
-    }
-
-    /* 側邊管理面板改為相對定位或隱藏 */
-    .col-lg-3 .position-sticky {
-        position: relative !important;
-        top: 0 !important;
     }
 }
 
