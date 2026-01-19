@@ -45,6 +45,8 @@ const sigImgArea = document.getElementById('sig-client-img'); // 取得甲方簽
 
 // 記錄當前印章縮放大小 (預設 175px)
 let currentStampSize = 175;
+// 記錄當前照片縮放大小 (預設 400px)
+let currentPhotoSize = 400;
 
 // 歷史紀錄排序變數
 let historySort = { field: 'last_updated', direction: 'desc' }; // 預設依最後更新由新到舊
@@ -248,7 +250,7 @@ function createRow() {
     const currentRows = itemsBody.querySelectorAll('tr').length;
     const newNumber = currentRows + 1;
     const tr = document.createElement('tr');
-    const dragIcon = isViewMode ? '' : `<i class="bi bi-grip-vertical text-muted"></i> `;
+    const dragIcon = isViewMode ? '' : `<i class="bi bi-grip-vertical text-muted drag-handle no-print"></i> `;
     tr.innerHTML = `
         <td class="drag-handle cursor-move text-center">${dragIcon}${newNumber}</td>
         <td><input type="text" class="item-name form-control-plaintext" placeholder="輸入品項名稱" list="items-datalist"></td>
@@ -318,7 +320,7 @@ function createRow() {
 function updateRowNumbers() {
     itemsBody.querySelectorAll('tr').forEach((row, index) => {
         const cell = row.cells[0];
-        const dragIcon = isViewMode ? '' : `<i class="bi bi-grip-vertical text-muted"></i> `;
+        const dragIcon = isViewMode ? '' : `<i class="bi bi-grip-vertical text-muted drag-handle no-print"></i> `;
         cell.innerHTML = `${dragIcon}${index + 1}`;
     });
 }
@@ -346,6 +348,10 @@ function updateAttachmentLayout() {
     uploadedImages.forEach((src, index) => {
         const div = document.createElement('div');
         div.className = 'attachment-item';
+        // 套用當前縮放大小
+        div.style.width = `${currentPhotoSize}px`;
+        div.style.height = 'auto'; // 取消 CSS 的固定高度
+
         const removeBtn = isViewMode ? '' : `<button class="remove-btn no-print" onclick="removeImage(${index})">&times;</button>`;
         div.innerHTML = `
             <img src="${src}">
@@ -764,6 +770,8 @@ window.saveQuotation = async function (isCopy = false) {
         formData.append('is_party_a_signature_needed', signatureToggle ? signatureToggle.checked : false);
         // 新增自定義時間欄位，解決系統 updated 欄位無法顯示的問題
         formData.append('last_updated', new Date().toISOString());
+        formData.append('photo_scale', currentPhotoSize); // 儲存照片縮放比例
+        // 移除 stamp_scale，改為由廠商資料控制
 
         // 取得 image-upload 中的真實 File 物件 (注意：此前的 uploadedImages 是 DataURL，我們要改用原始檔案)
         const fileInput = document.getElementById('image-upload-files') || { files: [] }; // 假設我們調整 HTML 使用隱藏 input 存檔案
@@ -790,6 +798,21 @@ window.saveQuotation = async function (isCopy = false) {
 
         console.log('儲存成功，回傳紀錄內容:', record);
         currentQuotationId = record.id; // 儲存後標記為正在編輯此單
+
+        // 同步更新當前廠商的印章比例到廠商資料庫
+        const selectedVendorId = vendorSelect.value;
+        if (selectedVendorId) {
+            try {
+                await pb.collection('vendors').update(selectedVendorId, {
+                    stamp_scale: currentStampSize
+                }, { '$autoCancel': false });
+                // 同步更新本地 vendors 資料，避免下次切換選單時抓到舊比例
+                const v = vendors.find(x => x.id === selectedVendorId);
+                if (v) v.stamp_scale = currentStampSize;
+            } catch (err) {
+                console.warn('同步廠商印章比例失敗:', err);
+            }
+        }
 
         // 解析補充說明並自動同步到 memo_presets (重複檢查)
         const memoLines = document.getElementById('memo-field').innerText.split('\n');
@@ -1021,6 +1044,17 @@ window.editQuotation = async function (id) {
         safeSetValue('c-date-input', dateVal);
         safeSetText('c-date-display', dateVal);
 
+        // 還原照片與印章比例
+        if (q.photo_scale) {
+            currentPhotoSize = q.photo_scale;
+            const pScaleInput = document.getElementById('photo-scale');
+            const pScaleVal = document.getElementById('photo-scale-val');
+            if (pScaleInput) pScaleInput.value = currentPhotoSize;
+            if (pScaleVal) pScaleVal.innerText = currentPhotoSize;
+        }
+
+        // 注意：印章比例現在由 vendorSelect.onchange 在載入廠商資訊時自動處理
+
         // 還原手動修改金額
         manualTotals = q.manual_totals ? (typeof q.manual_totals === 'string' ? JSON.parse(q.manual_totals) : q.manual_totals) : { subtotal: null, total: null };
 
@@ -1246,6 +1280,7 @@ window.loadVendorToForm = function (id) {
     document.getElementById('m-v-contact').value = v.contact;
     document.getElementById('m-v-website').value = v.website || '';
     document.getElementById('m-v-email').value = v.email || '';
+    document.getElementById('m-v-stamp-scale').value = v.stamp_scale || 175;
     if (v.stamp) {
         stampPreview.style.display = 'block';
         stampPreview.querySelector('img').src = getFileUrl('vendors', v, v.stamp);
@@ -1292,6 +1327,7 @@ vendorForm.onsubmit = async function (e) {
     formData.append('contact', document.getElementById('m-v-contact').value);
     formData.append('website', document.getElementById('m-v-website').value);
     formData.append('email', document.getElementById('m-v-email').value);
+    formData.append('stamp_scale', document.getElementById('m-v-stamp-scale').value || 175);
 
     const stampFile = document.getElementById('m-v-stamp').files[0];
     if (stampFile) {
@@ -1322,6 +1358,17 @@ vendorSelect.onchange = function () {
         document.getElementById('v-email').innerText = v.email || '';
         document.getElementById('sig-v-name').innerText = v.name;
 
+        // 套用廠商預設印章大小
+        if (v.stamp_scale) {
+            currentStampSize = v.stamp_scale;
+            const slider = document.getElementById('stamp-scale');
+            const valEl = document.getElementById('stamp-scale-val');
+            if (slider) slider.value = currentStampSize;
+            if (valEl) valEl.innerText = currentStampSize;
+            if (stampImgArea) stampImgArea.style.width = `${currentStampSize}px`;
+            if (sigImgArea) sigImgArea.style.width = `${currentStampSize}px`;
+        }
+
         if (v.stamp) {
             stampImgArea.src = getFileUrl('vendors', v, v.stamp);
             stampImgArea.style.display = 'block';
@@ -1341,6 +1388,21 @@ document.getElementById('stamp-scale').addEventListener('input', function (e) {
     // 同時作用於乙方印章與甲方簽署
     if (stampImgArea) stampImgArea.style.width = `${size}px`;
     if (sigImgArea) sigImgArea.style.width = `${size}px`;
+});
+
+// 處理照片縮放
+document.getElementById('photo-scale').addEventListener('input', function (e) {
+    const size = e.target.value;
+    currentPhotoSize = size;
+    const valEl = document.getElementById('photo-scale-val');
+    if (valEl) valEl.innerText = size;
+
+    // 即時套用到所有附件圖片
+    const images = document.querySelectorAll('.attachment-item');
+    images.forEach(container => {
+        container.style.width = `${size}px`;
+        container.style.height = 'auto'; // 縮放時取消固定高度，保持比例
+    });
 });
 
 // 輔助函式：取得列印檔名 (甲方公司名稱_工程名稱_日期)
@@ -1451,6 +1513,27 @@ async function loadQuotationForView(id) {
         setValOrText('c-phone', (q.customer_phone || "").trim());
         document.getElementById('c-date-input').value = q.date ? q.date.substring(0, 10) : '';
         document.getElementById('c-date-display').innerText = q.date ? q.date.substring(0, 10) : '';
+
+        // 還原比例狀態
+        if (q.photo_scale) {
+            currentPhotoSize = q.photo_scale;
+            const pScaleInput = document.getElementById('photo-scale');
+            const pScaleVal = document.getElementById('photo-scale-val');
+            if (pScaleInput) pScaleInput.value = currentPhotoSize;
+            if (pScaleVal) pScaleVal.innerText = currentPhotoSize;
+        }
+
+        // 訪客模式：如果有 vendor 資訊，套用廠商預設印章大小
+        if (q.expand && q.expand.vendor && q.expand.vendor.stamp_scale) {
+            currentStampSize = q.expand.vendor.stamp_scale;
+            if (stampImgArea) stampImgArea.style.width = `${currentStampSize}px`;
+            if (sigImgArea) sigImgArea.style.width = `${currentStampSize}px`;
+            // 更新 UI 控制項 (如果有顯示的話)
+            const slider = document.getElementById('stamp-scale');
+            const valEl = document.getElementById('stamp-scale-val');
+            if (slider) slider.value = currentStampSize;
+            if (valEl) valEl.innerText = currentStampSize;
+        }
 
         // 還原議價狀態
         manualTotals = q.manual_totals ? (typeof q.manual_totals === 'string' ? JSON.parse(q.manual_totals) : q.manual_totals) : { subtotal: null, total: null };

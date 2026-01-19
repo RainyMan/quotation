@@ -253,13 +253,34 @@ body {
     }
 
     .no-print,
-    #view-mode-toolbar {
+    #view-mode-toolbar,
+    .btn-remove-row,
+    #add-row,
+    .dropdown {
         display: none !important;
+    }
+
+    * {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        -webkit-filter: none !important;
+        filter: none !important;
+    }
+
+    /* 移除 Bootstrap 5 表格預設的厚黑線與細微位移陰影 */
+    .table,
+    .table> :not(caption)>*>* {
+        border-width: 1px !important;
+        box-shadow: none !important;
+    }
+
+    /* 移除輸入框可能的底線 (特別是 form-control-plaintext) */
+    .form-control-plaintext {
+        border-bottom: 0 !important;
     }
 
     .attachment-item {
         max-height: none !important;
-        /* 讓照片完整顯示 */
     }
 
     .attachment-item img {
@@ -277,14 +298,47 @@ body {
         padding: 10px !important;
     }
 
+    /* 移除表格外層容器可能的底線或陰影 */
     .table-responsive {
+        border: none !important;
         overflow: visible !important;
+    }
+
+    /* 移除合計列上方過於突兀的邊框 (改用更細的分隔線) */
+    #total-row {
+        border-top: 1px solid #eee !important;
+        margin-top: 5px !important;
+        padding-top: 5px !important;
+    }
+
+    /* 移除所有輸入框、編輯區在列印時不必要的邊框 */
+    .form-control-plaintext,
+    #memo-field,
+    [contenteditable="true"] {
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    /* 移除橫跨頁面的分隔線 (新增品項下方) */
+    #memo-and-totals-row {
+        border-top: none !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    /* 優化「總價新台幣」顯示，移除背景與邊框 */
+    #total-chinese {
+        background: none !important;
+        border: none !important;
+        padding: 0 !important;
     }
 
     /* 確保所有元素在列印時不保留非必要的背景色 */
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
     }
 }
 
