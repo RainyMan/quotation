@@ -115,8 +115,6 @@ body {
 .attachment-item {
     position: relative;
     overflow: hidden;
-    border-radius: 4px;
-    border: 1px solid #ddd;
 }
 
 .attachment-item img {
@@ -323,6 +321,7 @@ body {
     background: transparent !important;
     display: flex;
     align-items: center;
+    justify-content: center;
     position: relative;
     /* 移除 overflow: hidden 讓印章可以超出容器 */
     overflow: visible;

@@ -200,9 +200,8 @@
                 </table>
             </div>
 
-            <!-- 金額統計與大寫 -->
-            <div class="row g-4 border-top pt-4 mb-4">
-                <div class="col-7">
+            <div id="memo-and-totals-row" class="row g-4 border-top pt-4 mb-4">
+                <div class="col-5" id="memo-side-col">
                     <div class="mb-3">
                         <label class="fw-bold mb-1">總價新台幣：</label>
                         <div class="p-2 border rounded bg-light fw-bold text-dark h5" id="total-chinese">
@@ -235,19 +234,39 @@
                             accept="image/*">
                     </div>
                 </div>
-                <div class="col-5">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>合計金額 (未稅)</span>
-                        <span class="fw-bold" id="subtotal">NT$ 0</span>
+                <div class="col-7" id="totals-side-col">
+                    <!-- 合計資訊 -->
+                    <div id="totals-display-area">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>合計金額 (未稅)</span>
+                            <div class="text-end">
+                                <span class="text-decoration-line-through text-muted small me-2" id="subtotal-original"
+                                    style="display: none;"></span>
+                                <span class="fw-bold cursor-pointer" id="subtotal"
+                                    onclick="manualEditAmount('subtotal')">NT$ 0</span>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2" id="tax-row">
+                            <span>營業稅 (5%)</span>
+                            <div class="text-end">
+                                <span class="text-decoration-line-through text-muted small me-2" id="tax-original"
+                                    style="display: none;"></span>
+                                <span class="fw-bold" id="tax">NT$ 0</span>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-baseline border-top pt-2 mt-2 h5"
+                            id="total-row">
+                            <span class="fw-bold text-nowrap pe-2">總計金額 (含稅)</span>
+                            <div class="d-flex align-items-baseline justify-content-end flex-grow-1">
+                                <span class="text-decoration-line-through text-muted small me-2 text-nowrap"
+                                    id="total-original" style="display: none;"></span>
+                                <span class="fw-bold text-primary cursor-pointer text-nowrap" id="total"
+                                    onclick="manualEditAmount('total')">NT$ 0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>營業稅 (5%)</span>
-                        <span class="fw-bold" id="tax">NT$ 0</span>
-                    </div>
-                    <div class="d-flex justify-content-between border-top pt-2 mt-2 h5">
-                        <span class="fw-bold">總計金額 (含稅)</span>
-                        <span class="fw-bold text-primary" id="total">NT$ 0</span>
-                    </div>
+                    <!-- 模式切換時，乙方簽名會移動到這裡 -->
+                    <div id="sig-b-placeholder" class="mt-4"></div>
                 </div>
             </div>
 
@@ -257,14 +276,15 @@
             </div>
 
             <!-- 簽章區 -->
-            <div class="row mt-5 pt-5 text-center">
-                <div class="col-6 border-end d-flex flex-column align-items-center">
-                    <p class="mb-5 text-muted fw-bold text-center" style="min-height: 1.5em;"><span
+            <div id="signature-block" class="row mt-5 pt-5 text-center">
+                <!-- 甲方簽名欄位 -->
+                <div id="sig-a-col" class="col-6 border-end d-flex flex-column align-items-center">
+                    <p class="mb-5 text-muted fw-bold text-center w-100" style="min-height: 1.5em;"><span
                             id="sig-c-name"></span>（甲方）：</p>
                     <!-- 甲方電子簽名顯示區 -->
                     <div id="sig-client-display"
-                        class="position-relative d-flex justify-content-center align-items-center"
-                        style="height: 80px; width: 100%; margin-bottom: 5px; overflow: visible; z-index: 100;">
+                        class="position-relative d-flex justify-content-center align-items-center w-100"
+                        style="height: 80px; margin-bottom: 5px; overflow: visible; z-index: 100;">
                         <img id="sig-client-img" src="" style="display: none;">
                         <button id="btn-delete-sig"
                             class="btn btn-sm btn-danger no-print position-absolute top-0 end-0 py-0 px-1"
@@ -276,23 +296,26 @@
                             <i class="bi bi-pencil-fill me-1"></i> 甲方線上簽名
                         </button>
                     </div>
-                    <div style="width: 80%; max-width: 250px;">
+                    <div class="d-flex flex-column align-items-center" style="width: 80%; max-width: 250px;">
                         <div style="border-bottom: 2px solid #ccc; width: 100%; margin: 0 auto 5px;"></div>
                         <p class="small text-muted text-center mb-0" style="width: 100%;">(簽章)</p>
                     </div>
                 </div>
-                <div class="col-6 d-flex flex-column align-items-center">
-                    <p class="mb-5 text-muted fw-bold text-center" style="min-height: 1.5em;"><span
-                            id="sig-v-name">您的公司名稱</span>（乙方）：</p>
-                    <!-- 簽名預覽區 -->
-                    <div id="signature-preview"
-                        class="position-relative d-flex justify-content-center align-items-center"
-                        style="height: 80px; width: 100%; margin-bottom: 5px; overflow: visible; z-index: 100;">
-                        <img id="vendor-stamp-img" src="" style="opacity: 0.95; display: none; z-index: 1;">
-                    </div>
-                    <div style="width: 80%; max-width: 250px;">
-                        <div style="border-bottom: 2px solid #ccc; width: 100%; margin: 0 auto 5px;"></div>
-                        <p class="small text-muted text-center mb-0" style="width: 100%;">(簽章)</p>
+                <!-- 乙方簽名欄位 -->
+                <div id="sig-b-col" class="col-6 d-flex flex-column align-items-center">
+                    <div id="sig-b-content" class="d-flex flex-column align-items-center w-100">
+                        <p class="mb-5 text-muted fw-bold text-center w-100" style="min-height: 1.5em;"><span
+                                id="sig-v-name">您的公司名稱</span>（乙方）：</p>
+                        <!-- 簽名預覽區 -->
+                        <div id="signature-preview"
+                            class="position-relative d-flex justify-content-center align-items-center"
+                            style="height: 80px; width: 100%; margin-bottom: 5px; overflow: visible; z-index: 100;">
+                            <img id="vendor-stamp-img" src="" style="opacity: 0.95; display: none; z-index: 1;">
+                        </div>
+                        <div style="width: 80%; max-width: 250px;">
+                            <div style="border-bottom: 2px solid #ccc; width: 100%; margin: 0 auto 5px;"></div>
+                            <p class="small text-muted text-center mb-0" style="width: 100%;">(簽章)</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -302,17 +325,47 @@
         </div>
     </div>
 
-    <!-- 獨立印章與品項控制項 (掛在右側) -->
+    <!-- 內部利潤分析面板 (掛在右側，內部用) -->
+    <div id="cost-analysis-panel"
+        class="no-print position-fixed end-0 top-50 translate-middle-y shadow-lg bg-white border-danger"
+        style="z-index: 1050; width: 280px; border-radius: 12px; border: 2px solid; margin-right: 15px;">
+        <div class="bg-danger text-white p-2 d-flex justify-content-between align-items-center"
+            style="border-radius: 9px 9px 0 0;">
+            <span class="fw-bold small"><i class="bi bi-calculator me-1"></i> 內部成本分析 (利潤試算)</span>
+        </div>
+        <div class="p-3">
+            <div id="cost-items-list" style="max-height: 400px; overflow-y: auto;">
+                <!-- JS 動態生成成本輸入框 -->
+            </div>
+            <hr class="my-2">
+            <div class="d-flex justify-content-between h6 mb-0 text-danger fw-bold">
+                <span>總預估利潤</span>
+                <span id="profit-sidebar-val">NT$ 0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 獨立印章與品項控制項 (改掛在左側) -->
     <div id="floating-controls"
-        class="no-print position-fixed end-0 top-50 translate-middle-y me-4 d-flex flex-column gap-3"
-        style="z-index: 1050;">
+        class="no-print position-fixed start-0 top-50 translate-middle-y ms-2 d-flex flex-column gap-3"
+        style="z-index: 1050; max-height: 90vh; padding-left: 5px;">
+        <!-- 甲方簽名開關 -->
+        <div class="card shadow-sm border-info" style="width: 85px; background: rgba(255,255,255,0.95);">
+            <div class="card-body p-2 text-center">
+                <small class="text-info fw-bold" style="font-size: 12px; writing-mode: vertical-rl;">甲方簽名</small>
+                <div class="form-check form-switch mt-2 d-flex justify-content-center px-0">
+                    <input class="form-check-input ms-0" type="checkbox" id="signature-mode-toggle"
+                        style="cursor:pointer">
+                </div>
+            </div>
+        </div>
         <!-- 客戶管理 -->
         <div class="dropdown">
-            <button class="btn btn-info text-white shadow-sm" style="width: 60px; height: 60px; border-radius: 50%;"
+            <button class="btn btn-info text-white shadow-sm" style="width: 85px; height: 85px; border-radius: 50%;"
                 type="button" id="customerDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-people-fill fs-4"></i>
+                <i class="bi bi-people-fill fs-3"></i>
             </button>
-            <div class="dropdown-menu dropdown-menu-end p-3 shadow-lg border-0" aria-labelledby="customerDropdown"
+            <div class="dropdown-menu dropdown-menu-start p-3 shadow-lg border-0" aria-labelledby="customerDropdown"
                 id="customer-presets-container"
                 style="max-height: 400px; overflow-y: auto; min-width: 320px; border-radius: 12px;">
                 <div class="mb-2 sticky-top bg-white pt-1">
@@ -325,21 +378,21 @@
             </div>
         </div>
         <!-- 印章縮放 -->
-        <div class="card shadow-sm border-primary" style="width: 60px; background: rgba(255,255,255,0.9);">
+        <div class="card shadow-sm border-primary" style="width: 85px; background: rgba(255,255,255,0.95);">
             <div class="card-body p-2 text-center">
-                <small class="text-primary fw-bold" style="font-size: 10px; writing-mode: vertical-rl;">印章縮放 <span
+                <small class="text-primary fw-bold" style="font-size: 12px; writing-mode: vertical-rl;">印章縮放 <span
                         id="stamp-scale-val">175</span>%</small>
                 <input type="range" id="stamp-scale" min="50" max="250" value="175" class="form-range mt-3"
-                    style="transform: rotate(270deg); width: 80px; height: 4px; cursor: ns-resize; margin: 30px 0;">
+                    style="transform: rotate(270deg); width: 100px; height: 4px; cursor: ns-resize; margin: 40px 0;">
             </div>
         </div>
         <!-- 品項管理 -->
         <div class="dropdown">
-            <button class="btn btn-primary shadow-sm" style="width: 60px; height: 60px; border-radius: 50%;"
+            <button class="btn btn-primary shadow-sm" style="width: 85px; height: 85px; border-radius: 50%;"
                 type="button" id="itemDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-list-ul fs-4"></i>
+                <i class="bi bi-list-ul fs-3"></i>
             </button>
-            <div class="dropdown-menu dropdown-menu-end p-3 shadow-lg border-0" aria-labelledby="itemDropdown"
+            <div class="dropdown-menu dropdown-menu-start p-3 shadow-lg border-0" aria-labelledby="itemDropdown"
                 id="item-presets-container"
                 style="max-height: 400px; overflow-y: auto; min-width: 280px; border-radius: 12px;">
                 <!-- JS 動態加載品項 -->

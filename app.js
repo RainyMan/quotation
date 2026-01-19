@@ -15,6 +15,7 @@ let rowCount = 0;
 let currentQuotationId = null;
 let isViewMode = false; // 是否進入訪客觀看模式
 let signaturePad = null; // 手寫簽名物件
+let manualTotals = { subtotal: null, total: null }; // 存儲手動修改的金額
 
 // 即時檢查：如果是檢視模式 或 已登入，立刻隱藏登入遮罩防止閃爍
 const isAuth = localStorage.getItem('system_auth') === 'true';
@@ -83,25 +84,163 @@ function numberToChinese(n) {
 }
 
 // --- 4. 即時計算功能 ---
+// --- 4. 即時計算功能 ---
 function calculateTotals() {
     let subtotal = 0;
+    let totalCost = 0;
     const rows = itemsBody.querySelectorAll('tr');
+    const costInputs = document.querySelectorAll('.internal-cost-input');
 
-    rows.forEach(row => {
+    rows.forEach((row, index) => {
         const price = parseFloat(row.querySelector('.item-price').value) || 0;
         const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+
+        // 從對應的側邊欄輸入框取得成本
+        const costInput = costInputs[index];
+        const cost = parseFloat(costInput?.value) || 0;
+
         const lineTotal = price * qty;
+        const lineCost = cost * qty;
+
         row.querySelector('.item-subtotal').innerText = `NT$ ${lineTotal.toLocaleString()}`;
         subtotal += lineTotal;
+        totalCost += lineCost;
+
+        // 同步品項名稱到側邊欄 (標記用)
+        const costLabel = document.getElementById(`cost-label-${index}`);
+        if (costLabel) {
+            const name = row.querySelector('.item-name').value.trim() || `品項 ${index + 1}`;
+            costLabel.innerText = name;
+        }
     });
 
-    const tax = Math.round(subtotal * 0.05);
-    const total = subtotal + tax;
+    const calcSubtotal = subtotal;
+    const calcTax = Math.round(subtotal * 0.05);
+    const calcTotal = subtotal + calcTax;
 
-    subtotalEl.innerText = `NT$ ${subtotal.toLocaleString()}`;
-    taxEl.innerText = `NT$ ${tax.toLocaleString()}`;
-    totalEl.innerText = `NT$ ${total.toLocaleString()}`;
-    totalChineseEl.innerText = numberToChinese(total);
+    // 定義顯示用的變數
+    let subtotalDisplay = calcSubtotal;
+    let taxDisplay = calcTax;
+    let totalDisplay = calcTotal;
+
+    // 重置元件狀態
+    const sOrig = document.getElementById('subtotal-original');
+    const tOrig = document.getElementById('tax-original');
+    const totOrig = document.getElementById('total-original');
+
+    sOrig.style.display = 'none';
+    if (tOrig) tOrig.style.display = 'none';
+    totOrig.style.display = 'none';
+    subtotalEl.classList.remove('text-primary');
+    taxEl.classList.remove('text-decoration-line-through', 'text-muted', 'opacity-50');
+    totalEl.classList.remove('text-decoration-line-through', 'text-muted');
+    document.getElementById('total-row').classList.remove('opacity-50');
+
+    // 邏輯 A：手動修改未稅 (不開發票模式)
+    if (manualTotals && manualTotals.subtotal !== null) {
+        subtotalDisplay = manualTotals.subtotal;
+        // 數字完全不變動，稅金與總計維持原本根據項次算出的數字，僅畫刪除線
+        taxDisplay = calcTax;
+        totalDisplay = calcTotal;
+
+        sOrig.innerText = `NT$ ${calcSubtotal.toLocaleString()}`;
+        sOrig.style.display = 'inline';
+        subtotalEl.classList.add('text-primary'); // 變藍色 (與標題一致)
+
+        taxEl.classList.add('text-decoration-line-through', 'text-muted', 'opacity-50');
+        totalEl.classList.add('text-decoration-line-through', 'text-muted');
+        document.getElementById('total-row').classList.add('opacity-50');
+    }
+    // 邏輯 B：手動修改總價 (回推模式)
+    else if (manualTotals && manualTotals.total !== null) {
+        totalDisplay = manualTotals.total;
+        subtotalDisplay = Math.round(totalDisplay / 1.05);
+        taxDisplay = totalDisplay - subtotalDisplay;
+
+        // 劃掉原始合計
+        sOrig.innerText = `NT$ ${calcSubtotal.toLocaleString()}`;
+        sOrig.style.display = 'inline';
+
+        // 劃掉原始稅金
+        if (tOrig) {
+            tOrig.innerText = `NT$ ${calcTax.toLocaleString()}`;
+            tOrig.style.display = 'inline';
+        }
+
+        // 劃掉原始總價
+        totOrig.innerText = `NT$ ${calcTotal.toLocaleString()}`;
+        totOrig.style.display = 'inline';
+    }
+
+    subtotalEl.innerText = `NT$ ${subtotalDisplay.toLocaleString()}`;
+    taxEl.innerText = `NT$ ${taxDisplay.toLocaleString()}`;
+    totalEl.innerText = `NT$ ${totalDisplay.toLocaleString()}`;
+
+    // 中文大寫連動
+    const chineseTargetVal = (manualTotals && manualTotals.subtotal !== null) ? subtotalDisplay : totalDisplay;
+    totalChineseEl.innerText = numberToChinese(chineseTargetVal);
+
+    // 利潤計算：(議價後未稅金額 - 總成本)
+    const actualProfit = subtotalDisplay - totalCost;
+
+    const profitSidebar = document.getElementById('profit-sidebar-val');
+    if (profitSidebar) {
+        profitSidebar.innerText = `NT$ ${actualProfit.toLocaleString()}`;
+    }
+}
+
+// 新增：手動修改金額功能
+window.manualEditAmount = function (type) {
+    if (isViewMode) return;
+    const input = prompt(type === 'subtotal' ? '請輸入新的【未稅合計】金額 (輸入 0 或清空則恢復自動計算)：\n(注意：這將視為客戶不開發票，劃掉稅金與總計)' : '請輸入新的【含稅總計】金額 (輸入 0 或清空則恢復自動計算)：');
+
+    if (input === null) return;
+
+    const newVal = parseInt(input.replace(/[^\d]/g, ''));
+    if (!newVal || newVal <= 0) {
+        manualTotals[type] = null;
+    } else {
+        manualTotals[type] = newVal;
+        // 如果改了其中一個，另一個恢復自動避免衝突
+        if (type === 'subtotal') manualTotals.total = null;
+        else manualTotals.subtotal = null;
+    }
+    calculateTotals();
+}
+
+// 新增：刷新右側成本分析側邊欄
+function refreshCostSidebar(savedCosts = null) {
+    const list = document.getElementById('cost-items-list');
+    if (!list) return;
+
+    const rows = itemsBody.querySelectorAll('tr');
+
+    // 保存現有輸入值 (如果沒有傳入 savedCosts)
+    const currentCosts = savedCosts || Array.from(document.querySelectorAll('.internal-cost-input')).map(input => input.value);
+
+    list.innerHTML = '';
+    rows.forEach((row, index) => {
+        const name = row.querySelector('.item-name').value.trim() || `品項 ${index + 1}`;
+        const div = document.createElement('div');
+        div.className = 'mb-2 pb-2 border-bottom';
+        div.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="small fw-bold text-truncate" style="max-width: 150px;" id="cost-label-${index}">${name}</span>
+                <span class="badge bg-light text-dark border p-1" style="font-size: 10px;">Row ${index + 1}</span>
+            </div>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-danger text-white border-danger" style="font-size: 10px;">成本</span>
+                <input type="number" class="form-control internal-cost-input text-end" 
+                       value="${currentCosts[index] || 0}" 
+                       data-index="${index}" 
+                       oninput="calculateTotals()">
+            </div>
+        `;
+        list.appendChild(div);
+    });
+
+    // 如果一開始是隱藏的 (檢視模式)，則不需重新計算
+    if (!isViewMode) calculateTotals();
 }
 
 // --- 5. 表格列操作 ---
@@ -125,11 +264,20 @@ function createRow() {
 
     // 綁定事件
     tr.querySelectorAll('input').forEach(input => {
-        input.addEventListener('input', calculateTotals);
+        input.addEventListener('input', () => {
+            calculateTotals();
+            // 如果是品項名稱變更，同步到側邊欄
+            if (input.classList.contains('item-name')) {
+                const index = Array.from(itemsBody.querySelectorAll('tr')).indexOf(tr);
+                const label = document.getElementById(`cost-label-${index}`);
+                if (label) label.innerText = input.value.trim() || `品項 ${index + 1}`;
+            }
+        });
     });
 
     tr.querySelector('.btn-remove-row').addEventListener('click', () => {
         tr.remove();
+        refreshCostSidebar(); // 刪除列後重新刷新側邊欄
         calculateTotals();
         updateRowNumbers();
     });
@@ -163,6 +311,7 @@ function createRow() {
     });
 
     itemsBody.appendChild(tr);
+    refreshCostSidebar(); // 新增列後重新刷新側邊欄
     return tr;
 }
 
@@ -538,12 +687,15 @@ window.saveQuotation = async function (isCopy = false) {
         const memoHtml = document.getElementById('memo-field').innerHTML;
         const items = [];
         const rows = itemsBody.querySelectorAll('tr');
+        const costInputs = document.querySelectorAll('.internal-cost-input');
 
         const processedKeys = new Set();
-        for (const row of rows) {
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
             const name = row.querySelector('.item-name').value.trim();
             const unit = row.querySelector('.item-unit').value.trim();
             const price = parseFloat(row.querySelector('.item-price').value) || 0;
+            const cost = parseFloat(costInputs[i]?.value || 0);
 
             if (name) {
                 items.push({
@@ -551,6 +703,7 @@ window.saveQuotation = async function (isCopy = false) {
                     unit: unit,
                     qty: parseFloat(row.querySelector('.item-qty').value),
                     price: price,
+                    cost: cost,
                     note: row.querySelector('.item-note').value
                 });
 
@@ -602,9 +755,13 @@ window.saveQuotation = async function (isCopy = false) {
         formData.append('customer_phone', getElVal('c-phone'));
         formData.append('date', document.getElementById('c-date-input').value);
         formData.append('total', parseFloat(totalEl.innerText.replace(/[^\d]/g, '')));
+        formData.append('manual_totals', JSON.stringify(manualTotals)); // 儲存議價狀態
         formData.append('items', JSON.stringify(items));
         formData.append('memo_html', memoHtml);
         formData.append('vendor', vendorSelect.value);
+        // 儲存甲方簽名開關狀態 (對接資料庫欄位: is_party_a_signature_needed)
+        const signatureToggle = document.getElementById('signature-mode-toggle');
+        formData.append('is_party_a_signature_needed', signatureToggle ? signatureToggle.checked : false);
         // 新增自定義時間欄位，解決系統 updated 欄位無法顯示的問題
         formData.append('last_updated', new Date().toISOString());
 
@@ -864,6 +1021,9 @@ window.editQuotation = async function (id) {
         safeSetValue('c-date-input', dateVal);
         safeSetText('c-date-display', dateVal);
 
+        // 還原手動修改金額
+        manualTotals = q.manual_totals ? (typeof q.manual_totals === 'string' ? JSON.parse(q.manual_totals) : q.manual_totals) : { subtotal: null, total: null };
+
         const memoEl = document.getElementById('memo-field');
         const memoContainer = document.getElementById('memo-container');
         if (memoEl) memoEl.innerHTML = q.memo_html || "";
@@ -881,6 +1041,7 @@ window.editQuotation = async function (id) {
             }
         }
         if (Array.isArray(items)) {
+            const tempCosts = [];
             items.forEach((item, idx) => {
                 try {
                     const tr = createRow();
@@ -889,10 +1050,12 @@ window.editQuotation = async function (id) {
                     tr.querySelector('.item-qty').value = item.qty || 1;
                     tr.querySelector('.item-price').value = item.price || 0;
                     tr.querySelector('.item-note').value = item.note || '';
+                    tempCosts.push(item.cost || 0);
                 } catch (rowErr) {
                     console.error(`還原第 ${idx + 1} 列品項失敗:`, rowErr);
                 }
             });
+            refreshCostSidebar(tempCosts); // 還原後刷新側邊欄並填入成本
         }
         calculateTotals();
 
@@ -915,6 +1078,14 @@ window.editQuotation = async function (id) {
             });
         }
         updateAttachmentLayout();
+
+        // 還原甲方簽名模式狀態
+        const signatureToggle = document.getElementById('signature-mode-toggle');
+        if (signatureToggle) {
+            signatureToggle.checked = q.is_party_a_signature_needed === true;
+            // 手動觸發變更以更新 UI 配置
+            signatureToggle.dispatchEvent(new Event('change'));
+        }
 
         // 甲方簽名 (簽章) 還原
         const sigImg = document.getElementById('sig-client-img');
@@ -1281,11 +1452,15 @@ async function loadQuotationForView(id) {
         document.getElementById('c-date-input').value = q.date ? q.date.substring(0, 10) : '';
         document.getElementById('c-date-display').innerText = q.date ? q.date.substring(0, 10) : '';
 
+        // 還原議價狀態
+        manualTotals = q.manual_totals ? (typeof q.manual_totals === 'string' ? JSON.parse(q.manual_totals) : q.manual_totals) : { subtotal: null, total: null };
+
         // 渲染品項
         itemsBody.innerHTML = '';
         rowCount = 0;
         if (q.items) {
             const items = typeof q.items === 'string' ? JSON.parse(q.items) : q.items;
+            const tempCosts = [];
             items.forEach(item => {
                 const row = createRow();
                 row.querySelector('.item-name').value = item.name;
@@ -1293,8 +1468,14 @@ async function loadQuotationForView(id) {
                 row.querySelector('.item-qty').value = item.qty;
                 row.querySelector('.item-price').value = item.price;
                 row.querySelector('.item-note').value = item.note || '';
+                tempCosts.push(item.cost || 0);
             });
+            refreshCostSidebar(tempCosts);
         }
+
+        // 隱藏分析面板 (訪客模式)
+        const costPanel = document.getElementById('cost-analysis-panel');
+        if (costPanel) costPanel.style.display = 'none';
 
         // 補充說明
         const memoContent = (q.memo_html || '').trim();
@@ -1322,6 +1503,20 @@ async function loadQuotationForView(id) {
                 uploadedImages.push(url);
             });
             updateAttachmentLayout();
+        }
+
+        // 甲方簽名模式載入 (檢視模式)
+        const signatureToggle = document.getElementById('signature-mode-toggle');
+        if (signatureToggle) {
+            signatureToggle.checked = q.is_party_a_signature_needed === true;
+            // 重要：在檢視模式下也需要觸發 UI 更新
+            const modeUpdateFunc = window._updateSignatureUI;
+            if (typeof modeUpdateFunc === 'function') {
+                modeUpdateFunc();
+            } else {
+                // 如果函數還沒準備好，延遲一下下執行或直接在這裡處理簡單切換
+                signatureToggle.dispatchEvent(new Event('change'));
+            }
         }
 
         // 廠商資訊
@@ -1492,6 +1687,80 @@ async function deleteClientSignature() {
 }
 
 
+// --- 11b. 簽名模式切換邏輯 (甲方須簽名 / 不須簽名) ---
+function setupSignatureModeToggle() {
+    const toggle = document.getElementById('signature-mode-toggle');
+    if (!toggle) return;
+
+    const updateUI = () => {
+        const isPartyANeeded = toggle.checked;
+        const sigA = document.getElementById('sig-a-col');
+        const sigBCol = document.getElementById('sig-b-col');
+        const sigBPlaceholder = document.getElementById('sig-b-placeholder');
+        const sigBContent = document.getElementById('sig-b-content');
+        const sigBlock = document.getElementById('signature-block');
+        const attachments = document.getElementById('quotation-attachments');
+        const memoContainer = document.getElementById('memo-container');
+
+        const container = document.querySelector('.a4-page > .p-5');
+
+        if (!isPartyANeeded) {
+            // 模式 A：甲方不須簽名 (預設)
+            if (sigA) sigA.style.setProperty('display', 'none', 'important');
+            if (sigBCol) sigBCol.style.setProperty('display', 'none', 'important');
+
+            // 下移「補充說明」區塊以對齊乙方
+            if (memoContainer) {
+                memoContainer.style.marginTop = '42px';
+            }
+
+            if (sigBPlaceholder && sigBContent) {
+                sigBPlaceholder.appendChild(sigBContent);
+                // 乙方簽名區調整
+                sigBPlaceholder.style.marginTop = '50px';
+                if (sigBContent.style) sigBContent.style.marginTop = '0px';
+                sigBContent.querySelectorAll('p').forEach(p => {
+                    p.style.marginBottom = '1.2rem';
+                });
+            }
+            // 照片移到最下面
+            if (attachments && container) {
+                container.appendChild(attachments);
+            }
+            if (sigBlock) sigBlock.style.setProperty('display', 'none', 'important');
+        } else {
+            // 模式 B：甲方須簽名 (原本狀態)
+            if (sigA) sigA.style.setProperty('display', 'flex', 'important');
+            if (sigBCol) sigBCol.style.setProperty('display', 'flex', 'important');
+
+            // 恢復「補充說明」原始間距
+            if (memoContainer) {
+                memoContainer.style.marginTop = '';
+            }
+
+            if (sigBCol && sigBContent) {
+                sigBCol.appendChild(sigBContent);
+                sigBContent.style.marginTop = '';
+                sigBContent.querySelectorAll('p').forEach(p => {
+                    p.style.marginBottom = '';
+                });
+            }
+            // 照片搬回簽名區之前
+            if (attachments && sigBlock && container) {
+                container.insertBefore(attachments, sigBlock);
+            }
+            if (sigBlock) {
+                sigBlock.style.setProperty('display', 'flex', 'important');
+                sigBlock.classList.add('mt-5', 'pt-5');
+            }
+        }
+    };
+
+    window._updateSignatureUI = updateUI;
+    toggle.addEventListener('change', updateUI);
+    updateUI();
+}
+
 // --- 12. 初始化執行 (放在最末以確保所有函數與變數都已定義) ---
 addRowBtn.addEventListener('click', createRow);
 document.getElementById('btn-save').addEventListener('click', saveQuotation);
@@ -1501,6 +1770,7 @@ document.getElementById('btn-history-filter').addEventListener('click', loadHist
 // 核心初始化
 initQuotationInfo();
 setupDynamicSync();
+setupSignatureModeToggle();
 
 // 初始化拖拽排序
 if (typeof Sortable !== 'undefined') {
