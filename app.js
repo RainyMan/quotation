@@ -106,16 +106,18 @@ function calculateTotals() {
 
 // --- 5. 表格列操作 ---
 function createRow() {
-    rowCount++;
+    const currentRows = itemsBody.querySelectorAll('tr').length;
+    const newNumber = currentRows + 1;
     const tr = document.createElement('tr');
+    const dragIcon = isViewMode ? '' : `<i class="bi bi-grip-vertical text-muted"></i> `;
     tr.innerHTML = `
-        <td>${rowCount}</td>
+        <td class="drag-handle cursor-move text-center">${dragIcon}${newNumber}</td>
         <td><input type="text" class="item-name form-control-plaintext" placeholder="輸入品項名稱" list="items-datalist"></td>
         <td><input type="text" class="item-unit form-control-plaintext text-center" value="式"></td>
         <td><input type="number" class="item-qty text-center" value="1"></td>
         <td><input type="number" class="item-price text-end" value="0"></td>
         <td class="item-subtotal text-end fw-bold">NT$ 0</td>
-        <td><input type="text" class="item-note form-control-plaintext" placeholder="備註"></td>
+        <td><input type="text" class="item-note form-control-plaintext" placeholder=""></td>
         <td class="no-print text-center">
             <button class="btn btn-sm text-danger btn-remove-row"><i class="bi bi-trash"></i></button>
         </td>
@@ -166,7 +168,9 @@ function createRow() {
 
 function updateRowNumbers() {
     itemsBody.querySelectorAll('tr').forEach((row, index) => {
-        row.cells[0].innerText = index + 1;
+        const cell = row.cells[0];
+        const dragIcon = isViewMode ? '' : `<i class="bi bi-grip-vertical text-muted"></i> `;
+        cell.innerHTML = `${dragIcon}${index + 1}`;
     });
 }
 
@@ -387,6 +391,144 @@ window.deleteItemPreset = async function (id, name) {
     }
 };
 
+// --- 10b. 客戶字典與自動補全 ---
+let customerDictionary = [];
+
+async function updateCustomersDatalist() {
+    const datalist = document.getElementById('customers-datalist');
+    const presetContainer = document.getElementById('customer-presets-container');
+    if (!datalist || !presetContainer) return;
+
+    try {
+        // 修正：從最近 500 筆提取，並改用更穩定的排序或備援
+        let records;
+        try {
+            records = await pb.collection('quotations').getList(1, 500, {
+                sort: '-created',
+                '$autoCancel': false
+            });
+        } catch (err) {
+            console.warn('嘗試原始撈取客戶清單...');
+            records = await pb.collection('quotations').getList(1, 500, { '$autoCancel': false });
+        }
+        console.log(`[客戶資料庫] 已從歷史紀錄載入 ${records.items.length} 筆資料`);
+
+        const uniqueCustomers = [];
+        const seen = new Set();
+
+        records.items.forEach(q => {
+            const name = (q.customer_name || '').trim();
+            const contact = (q.customer_contact || '').trim();
+            const phone = (q.customer_phone || '').trim();
+            if (!name) return;
+
+            const key = `${name}_${contact}(${phone})`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueCustomers.push({ name, contact, phone, key });
+            }
+        });
+
+        customerDictionary = uniqueCustomers;
+
+        // 更新 Datalist
+        datalist.innerHTML = '';
+        uniqueCustomers.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.key;
+            datalist.appendChild(opt);
+        });
+
+        // 渲染浮動選單 (初始渲染全部)
+        renderCustomerList(customerDictionary);
+
+    } catch (e) {
+        console.error('更新客戶列表失敗', e);
+    }
+}
+
+// 新增：渲染客戶列表輔助函式
+function renderCustomerList(list) {
+    const listContainer = document.getElementById('customer-list-container');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '';
+    if (list.length === 0) {
+        listContainer.innerHTML = '<div class="text-center small py-3 text-muted">找不到相符的客戶紀錄</div>';
+        return;
+    }
+
+    list.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'p-2 border-bottom cursor-pointer hover-bg-light small customer-preset-item';
+        div.innerHTML = `<strong>${c.name}_${c.contact}(${c.phone})</strong>`;
+        div.onclick = (e) => {
+            e.stopPropagation();
+            setCustomerFields(c.name, c.contact, c.phone);
+            // 選取後自動關閉選單 (可選)
+            const dropdown = bootstrap.Dropdown.getInstance(document.getElementById('customerDropdown'));
+            if (dropdown) dropdown.hide();
+        };
+        listContainer.appendChild(div);
+    });
+}
+
+function setCustomerFields(name, contact, phone) {
+    const fields = {
+        'c-name': name,
+        'c-contact': contact,
+        'c-phone': phone
+    };
+    for (const [id, val] of Object.entries(fields)) {
+        const el = document.getElementById(id);
+        if (el) {
+            // 修正：判斷標籤類型，INPUT 使用 value，其餘使用 innerText
+            if (el.tagName === 'INPUT') el.value = val || "";
+            else el.innerText = val || "";
+        }
+    }
+    // 同時更新簽名處的甲方名稱
+    const sigCName = document.getElementById('sig-c-name');
+    if (sigCName) sigCName.innerText = name || "";
+}
+
+function setupCustomerAutoFill() {
+    ['c-name', 'c-contact', 'c-phone'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', (e) => {
+            const val = e.target.value || '';
+            // 1. 檢測是否選擇了 Datalist 中的完整格式 (Name_Contact(Phone))
+            if (val.includes('_') && val.includes('(')) {
+                const parts = val.split('_'); // [Name, "Contact(Phone)"]
+                if (parts.length >= 2) {
+                    const name = parts[0];
+                    const rest = parts[1]; // "Contact(Phone)"
+                    const subParts = rest.match(/(.+)\((.+)\)/);
+                    if (subParts) {
+                        setCustomerFields(name, subParts[1], subParts[2]);
+                    } else {
+                        setCustomerFields(name, rest, "");
+                    }
+                }
+            }
+            else if (val.includes('_')) {
+                const parts = val.split('_');
+                if (parts.length >= 1) {
+                    setCustomerFields(parts[0], parts[1] || '', parts[2] || '');
+                }
+            }
+            // 2. 精確匹配：如果輸入的公司名稱完全吻合字典，自動帶入
+            else if (id === 'c-name') {
+                const found = customerDictionary.find(c => c.name === val.trim());
+                if (found) {
+                    setCustomerFields(found.name, found.contact, found.phone);
+                }
+            }
+        });
+    });
+}
+
 window.saveQuotation = async function (isCopy = false) {
     try {
         const btn = document.getElementById('btn-save');
@@ -444,14 +586,20 @@ window.saveQuotation = async function (isCopy = false) {
 
         // 構建 FormData 以支援多圖上傳
         const formData = new FormData();
+        const getElVal = (id) => {
+            const el = document.getElementById(id);
+            if (!el) return "";
+            return (el.value || el.innerText || "").trim();
+        };
+
         formData.append('quo_number', document.getElementById('quo-number').innerText);
-        formData.append('customer_name', document.getElementById('c-name').innerText);
+        formData.append('customer_name', getElVal('c-name'));
         // 同時傳送 project_location 與 project_name 以相容資料庫設定
-        const projName = document.getElementById('c-location').innerText;
+        const projName = getElVal('c-location');
         formData.append('project_location', projName);
         formData.append('project_name', projName);
-        formData.append('customer_contact', document.getElementById('c-contact').innerText);
-        formData.append('customer_phone', document.getElementById('c-phone').innerText);
+        formData.append('customer_contact', getElVal('c-contact'));
+        formData.append('customer_phone', getElVal('c-phone'));
         formData.append('date', document.getElementById('c-date-input').value);
         formData.append('total', parseFloat(totalEl.innerText.replace(/[^\d]/g, '')));
         formData.append('items', JSON.stringify(items));
@@ -505,6 +653,7 @@ window.saveQuotation = async function (isCopy = false) {
         alert(isCopy ? '已成功複製並儲存新的報價單！' : '報價單已成功儲存！');
 
         updateItemsDatalist();
+        updateCustomersDatalist(); // 新增：儲存後立即更新客戶下拉選單與 Datalist
         loadHistory();
         loadMemoPresets();
         loadItemPresets();
@@ -688,7 +837,9 @@ window.editQuotation = async function (id) {
         const safeSetText = (id, val) => {
             const el = document.getElementById(id);
             if (el) {
-                el.innerText = val || "";
+                if (el.tagName === 'INPUT') el.value = val || "";
+                else el.innerText = val || "";
+
                 // 額外同步：如果是 c-name，也同步到 sig-c-name
                 if (id === 'c-name') {
                     const sigCName = document.getElementById('sig-c-name');
@@ -714,7 +865,9 @@ window.editQuotation = async function (id) {
         safeSetText('c-date-display', dateVal);
 
         const memoEl = document.getElementById('memo-field');
+        const memoContainer = document.getElementById('memo-container');
         if (memoEl) memoEl.innerHTML = q.memo_html || "";
+        if (memoContainer) memoContainer.style.display = 'block';
 
         // 還原品項
         itemsBody.innerHTML = '';
@@ -845,10 +998,8 @@ async function initQuotationInfo() {
     // 修正：如果是檢視模式，則跳過清空動作，以免覆蓋剛讀取的資料
     const params = new URLSearchParams(window.location.search);
     if (!params.get('view')) {
-        ['c-name', 'c-location', 'c-contact', 'c-phone'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.innerText = "";
-        });
+        // 不再強制清空內容，讓 placeholder (如果有的話) 或空狀態自然呈現
+        // 但使用者要求「不用有浮水印引導」，所以 HTML 已移除 placeholder
     }
 
     // 監聽日期變更
@@ -875,9 +1026,10 @@ function setupDynamicSync() {
 
     if (cName && sigCName) {
         cName.addEventListener('input', () => {
-            sigCName.innerText = cName.innerText;
+            // 修正：c-name 是 INPUT，需使用 .value
+            sigCName.innerText = cName.value || "";
         });
-        sigCName.innerText = cName.innerText;
+        sigCName.innerText = cName.value || "";
     }
 }
 
@@ -1022,15 +1174,18 @@ document.getElementById('stamp-scale').addEventListener('input', function (e) {
 
 // 輔助函式：取得列印檔名 (甲方公司名稱_工程名稱_日期)
 function getPrintFilename() {
-    const company = document.getElementById('c-name').innerText.trim() || "甲方公司";
-    const project = document.getElementById('c-location').innerText.trim() || "工程報價";
+    const companyEl = document.getElementById('c-name');
+    const projectEl = document.getElementById('c-location');
+
+    const company = (companyEl.value || companyEl.innerText || "甲方公司").trim();
+    const project = (projectEl.value || projectEl.innerText || "工程報價").trim();
 
     const now = new Date();
     const dateStr = now.getFullYear() +
         String(now.getMonth() + 1).padStart(2, '0') +
         String(now.getDate()).padStart(2, '0');
 
-    return `${company}_${project}_${dateStr}`.replace(/[\/\?<>\\:\*\|":]/g, '_');
+    return `${company}-${project}(${dateStr})`.replace(/[\/\?<>\\:\*\|":]/g, '_');
 }
 
 // 處理列印時的檔名
@@ -1080,6 +1235,10 @@ async function checkViewMode() {
         const toolbar = document.getElementById('view-mode-toolbar');
         if (toolbar) toolbar.style.display = 'flex';
 
+        // 隱藏右側浮動控制項
+        const floatingControls = document.getElementById('floating-controls');
+        if (floatingControls) floatingControls.style.setProperty('display', 'none', 'important');
+
         // 監聽列印事件以自動修改檔名 (document.title)
         // 已在全域設置，此處保留邏輯一致性即可
         window.onbeforeprint = () => {
@@ -1103,15 +1262,22 @@ async function loadQuotationForView(id) {
         const q = await pb.collection('quotations').getOne(id, { expand: 'vendor', '$autoCancel': false });
 
         // 填充基本資訊
+        const setValOrText = (id, val) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (el.tagName === 'INPUT') el.value = val || '';
+            else el.innerText = val || '';
+        };
+
         document.getElementById('quo-number').innerText = q.quo_number;
         const customerName = (q.customer_name || "").trim();
-        document.getElementById('c-name').innerText = customerName;
+        setValOrText('c-name', customerName);
         const sigCName = document.getElementById('sig-c-name');
         if (sigCName) sigCName.innerText = customerName;
 
-        document.getElementById('c-location').innerText = (q.project_name || q.project_location || "").trim();
-        document.getElementById('c-contact').innerText = (q.customer_contact || "").trim();
-        document.getElementById('c-phone').innerText = (q.customer_phone || "").trim();
+        setValOrText('c-location', (q.project_name || q.project_location || "").trim());
+        setValOrText('c-contact', (q.customer_contact || "").trim());
+        setValOrText('c-phone', (q.customer_phone || "").trim());
         document.getElementById('c-date-input').value = q.date ? q.date.substring(0, 10) : '';
         document.getElementById('c-date-display').innerText = q.date ? q.date.substring(0, 10) : '';
 
@@ -1131,7 +1297,19 @@ async function loadQuotationForView(id) {
         }
 
         // 補充說明
-        document.getElementById('memo-field').innerHTML = q.memo_html || '';
+        const memoContent = (q.memo_html || '').trim();
+        const memoField = document.getElementById('memo-field');
+        const memoContainer = document.getElementById('memo-container');
+        memoField.innerHTML = memoContent;
+
+        // 如果在檢視模式且備註為空，隱藏整個備註區塊
+        if (memoContainer) {
+            if (!memoContent || memoContent === '<br>') {
+                memoContainer.style.display = 'none';
+            } else {
+                memoContainer.style.display = 'block';
+            }
+        }
 
         // 附件照片
         if (q.images || q.photos) {
@@ -1199,7 +1377,7 @@ async function loadQuotationForView(id) {
             el.disabled = true;
             el.style.backgroundColor = 'transparent';
         });
-        document.querySelectorAll('.btn-row-remove, #add-row').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.btn-remove-row, #add-row').forEach(el => el.style.display = 'none');
 
     } catch (e) {
         console.error('載入分享報價單詳情失敗:', e);
@@ -1222,7 +1400,27 @@ function initSignaturePad() {
             backgroundColor: 'rgba(255, 255, 255, 0)',
             penColor: 'rgb(0, 0, 0)'
         });
+
+        // 綁定視窗縮放
+        window.addEventListener('resize', resizeCanvas);
     }
+}
+
+function resizeCanvas() {
+    const canvas = document.getElementById('signature-canvas');
+    if (!canvas || !signaturePad) return;
+
+    // 取得容器寬度
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const containerWidth = canvas.parentElement.clientWidth;
+
+    // 設置畫布寬度
+    canvas.width = containerWidth * ratio;
+    // 手機版高度可以稍微調高一點
+    canvas.height = (window.innerWidth < 768 ? 250 : 200) * ratio;
+    canvas.getContext("2d").scale(ratio, ratio);
+
+    signaturePad.clear(); // 調整大小後必須清除畫布
 }
 
 async function submitClientSignature() {
@@ -1303,10 +1501,45 @@ document.getElementById('btn-history-filter').addEventListener('click', loadHist
 // 核心初始化
 initQuotationInfo();
 setupDynamicSync();
+
+// 初始化拖拽排序
+if (typeof Sortable !== 'undefined') {
+    new Sortable(itemsBody, {
+        animation: 150,
+        handle: '.drag-handle', // 指定項次為拖拽手把
+        ghostClass: 'sortable-ghost',
+        onEnd: function () {
+            updateRowNumbers();
+            calculateTotals();
+        }
+    });
+}
+
 loadMemoPresets();
 renderVendors();
 updateItemsDatalist();
 loadItemPresets();
+console.log('正在初始化客戶功能...');
+updateCustomersDatalist();
+setupCustomerAutoFill();
+
+// 監聽客戶搜尋框
+const customerSearchInput = document.getElementById('customer-search-input');
+if (customerSearchInput) {
+    customerSearchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        const filtered = customerDictionary.filter(c =>
+            c.name.toLowerCase().includes(query) ||
+            c.contact.toLowerCase().includes(query) ||
+            c.phone.toLowerCase().includes(query)
+        );
+        renderCustomerList(filtered);
+    });
+    // 防止點擊搜尋框時關閉 Dropdown
+    customerSearchInput.addEventListener('click', (e) => e.stopPropagation());
+}
+
+console.log('客戶功能初始化完成');
 
 // 初始新增一列 (使用者再視需求自行新增)
 for (let i = 0; i < 1; i++) createRow();
@@ -1347,6 +1580,12 @@ document.getElementById('sig-file').addEventListener('change', function (e) {
 
 // 初始化簽名板
 initSignaturePad();
+
+// 監聽簽名 Modal 開啟後立刻重調畫布大小
+const sigModalEl = document.getElementById('signatureModal');
+if (sigModalEl) {
+    sigModalEl.addEventListener('shown.bs.modal', resizeCanvas);
+}
 
 // 檢查是否進入檢視模式
 checkViewMode();

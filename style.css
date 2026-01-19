@@ -66,13 +66,38 @@ body {
     box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2);
 }
 
+.drag-handle {
+    cursor: grab;
+    user-select: none;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: #e9ecef !important;
+}
+
 /* Placeholder for contenteditable */
 [contenteditable][data-placeholder]:empty:before {
     content: attr(data-placeholder);
-    color: #ccc;
+    color: #adb5bd !important;
     font-weight: normal;
     font-style: italic;
     cursor: text;
+}
+
+::placeholder {
+    font-style: italic !important;
+    font-weight: normal !important;
+    color: #adb5bd !important;
+    opacity: 1;
+}
+
+.bg-white-50 {
+    background-color: rgba(255, 255, 255, 0.5) !important;
 }
 
 [contenteditable][data-placeholder]:focus:before {
@@ -310,9 +335,10 @@ body {
 #vendor-stamp-img,
 #sig-client-img {
     mix-blend-mode: multiply;
-    /* 讓白底簽名透明化 */
+    /* 讓簽名透明化 */
     max-width: 100% !important;
-    max-height: 100% !important;
+    max-height: none !important;
+    /* 移除高度限制，允許超出容器 */
     height: auto !important;
     filter: contrast(1.2);
     z-index: 10;
@@ -342,6 +368,18 @@ body {
 /* View Mode Styling */
 .view-mode .no-print:not(#view-mode-toolbar) {
     display: none !important;
+}
+
+.customer-preset-item {
+    transition: background-color 0.2s;
+}
+
+.customer-preset-item:hover {
+    background-color: rgba(13, 202, 240, 0.1);
+}
+
+.btn-link:hover {
+    filter: brightness(1.2);
 }
 
 .view-mode [contenteditable="true"] {
@@ -402,12 +440,13 @@ body {
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 24px;
-    padding: 3rem;
-    width: 100%;
-    max-width: 450px;
+    padding: 2.5rem;
+    width: 95%;
+    max-width: 420px;
     text-align: center;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     animation: loginSlideUp 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    margin: 15px;
 }
 
 @keyframes loginSlideUp {
@@ -437,8 +476,9 @@ body {
 }
 
 .pin-box {
-    width: 50px;
-    height: 60px;
+    width: 12%;
+    max-width: 50px;
+    aspect-ratio: 5/6;
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 12px;
@@ -509,7 +549,20 @@ body {
     }
 
     .pin-container {
-        gap: 8px !important;
+        gap: 6px !important;
+    }
+
+    /* 使簽名板在手機上更易於操作 */
+    #signatureModal .modal-body {
+        padding: 0.75rem;
+    }
+
+    #signature-canvas {
+        height: 250px !important;
+    }
+
+    .tab-content {
+        padding: 10px !important;
     }
 
     /* 隱藏非必要裝飾 */

@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="style.css?v=1.0.6">
     <!-- Signature Pad -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <!-- SortableJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 
 <body class="bg-light">
@@ -109,7 +111,8 @@
                     <h4 id="v-name">大馬道路有限公司</h4>
                     <div class="small text-muted" style="white-space: nowrap;">
                         統編：<span id="v-tax">96833966</span><br>
-                        聯絡人：<span id="v-contact">吳志佳</span> | 電話：<span id="v-phone">09-0808-5050</span><br>
+                        聯絡人：&nbsp;&nbsp;<span id="v-contact">吳志佳</span>&nbsp;&nbsp;|&nbsp;&nbsp;電話：<span
+                            id="v-phone">09-0808-5050</span><br>
                         地址：<span id="v-address">新北市板橋區雙十路二段27號四樓</span><br>
                         網頁：<span id="v-website">TarmacRoad.com</span> | Email：<span
                             id="v-email">Ac@tarmacroad.com</span>
@@ -123,14 +126,17 @@
                     <div class="p-3 bg-light rounded-3 border">
                         <div class="row g-3">
                             <div class="col-6">
-                                <label class="text-primary fw-bold small mb-1 no-print">公司名稱</label>
-                                <div id="c-name" contenteditable="true" class="fw-bold fs-4" data-placeholder="請輸入公司名稱">
+                                <div class="d-flex justify-content-between align-items-center mb-1 no-print">
+                                    <label class="text-primary fw-bold small mb-0">公司名稱</label>
                                 </div>
+                                <input type="text" id="c-name" class="form-control form-control-plaintext fw-bold p-0"
+                                    placeholder="請輸入公司名稱" list="customers-datalist"
+                                    style="border: none; outline: none; font-size: 26px;">
                             </div>
                             <div class="col-6">
                                 <label class="text-primary fw-bold small mb-1 no-print">工程名稱</label>
-                                <div id="c-location" contenteditable="true" class="fw-bold fs-4"
-                                    data-placeholder="請輸入工程名稱"></div>
+                                <div id="c-location" contenteditable="true" class="fw-bold p-0"
+                                    data-placeholder="請輸入工程名稱" style="min-height: 1.2em; font-size: 26px;"></div>
                             </div>
                             <!-- 下一排分割成兩欄 -->
                             <div class="col-5 bg-light">
@@ -139,12 +145,23 @@
                                     class="form-control d-inline-block w-auto no-print">
                                 <span id="c-date-display" class="print-only"></span>
                             </div>
-                            <div class="col-7 text-end" style="white-space: nowrap;">
-                                <strong>聯絡人：</strong> <span id="c-contact" contenteditable="true"
-                                    data-placeholder="請輸入聯絡人"></span>
-                                <span class="mx-2">|</span>
-                                <strong>電話：</strong> <span id="c-phone" contenteditable="true"
-                                    data-placeholder="請輸入電話"></span>
+                            <div class="col-7 text-end d-flex align-items-center justify-content-end"
+                                style="white-space: nowrap;">
+                                <div class="d-inline-flex align-items-center">
+                                    <strong>聯絡人：&nbsp;&nbsp;</strong>
+                                    <input type="text" id="c-contact"
+                                        class="form-control form-control-plaintext d-inline-block p-0 text-start"
+                                        placeholder="輸入聯絡人" list="customers-datalist"
+                                        style="width: 100px; margin-left: 0;">
+                                </div>
+                                <span>|&nbsp;&nbsp;</span>
+                                <div class="d-inline-flex align-items-center">
+                                    <strong>電話：&nbsp;&nbsp;</strong>
+                                    <input type="text" id="c-phone"
+                                        class="form-control form-control-plaintext d-inline-block p-0 text-start"
+                                        placeholder="輸入電話" list="customers-datalist"
+                                        style="width: 120px; margin-left: 0;">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -156,7 +173,7 @@
                 <table class="table table-bordered align-middle" id="items-table">
                     <thead class="table-yellow">
                         <tr>
-                            <th style="width: 5%">項次</th>
+                            <th style="width: 8%">項次</th>
                             <th style="width: 35%">品項</th>
                             <th style="width: 10%">單位</th>
                             <th style="width: 10%">數量</th>
@@ -192,7 +209,7 @@
                             零元整
                         </div>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="memo-container">
                         <label class="fw-bold mb-1">補充說明:</label>
                         <div class="dropdown no-print mb-2">
                             <button class="btn btn-sm btn-outline-primary dropdown-toggle w-100" type="button"
@@ -286,8 +303,27 @@
     </div>
 
     <!-- 獨立印章與品項控制項 (掛在右側) -->
-    <div class="no-print position-fixed end-0 top-50 translate-middle-y me-4 d-flex flex-column gap-3"
+    <div id="floating-controls"
+        class="no-print position-fixed end-0 top-50 translate-middle-y me-4 d-flex flex-column gap-3"
         style="z-index: 1050;">
+        <!-- 客戶管理 -->
+        <div class="dropdown">
+            <button class="btn btn-info text-white shadow-sm" style="width: 60px; height: 60px; border-radius: 50%;"
+                type="button" id="customerDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-people-fill fs-4"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end p-3 shadow-lg border-0" aria-labelledby="customerDropdown"
+                id="customer-presets-container"
+                style="max-height: 400px; overflow-y: auto; min-width: 320px; border-radius: 12px;">
+                <div class="mb-2 sticky-top bg-white pt-1">
+                    <input type="text" id="customer-search-input" class="form-control form-control-sm shadow-sm"
+                        placeholder="搜尋公司、聯絡人或電話...">
+                </div>
+                <div id="customer-list-container">
+                    <!-- JS 動態加載客戶 -->
+                </div>
+            </div>
+        </div>
         <!-- 印章縮放 -->
         <div class="card shadow-sm border-primary" style="width: 60px; background: rgba(255,255,255,0.9);">
             <div class="card-body p-2 text-center">
@@ -435,7 +471,7 @@
 
     <!-- 電子簽名 Modal -->
     <div class="modal fade" id="signatureModal" tabindex="-1">
-        <div class="modal-dialog modal-md">
+        <div class="modal-dialog modal-md modal-fullscreen-sm-down">
             <div class="modal-content text-dark">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">甲方電子簽名</h5>
@@ -482,6 +518,7 @@
     </div>
 
     <datalist id="items-datalist"></datalist>
+    <datalist id="customers-datalist"></datalist>
 
     <script src="https://cdn.jsdelivr.net/npm/pocketbase/dist/pocketbase.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
