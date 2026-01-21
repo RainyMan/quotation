@@ -256,6 +256,10 @@ body {
         display: none !important;
     }
 
+    .print-only {
+        display: inline-block !important;
+    }
+
     * {
         box-shadow: none !important;
         text-shadow: none !important;

@@ -59,7 +59,7 @@ let historySort = { field: 'last_updated', direction: 'desc' }; // 預設依最�
  * @param {number} targetSizeKB 目標大小 (KB)
  * @returns {Promise<File>} 壓縮後的檔案
  */
-async function compressImage(file, targetSizeKB = 50) {
+async function compressImage(file, targetSizeKB = 200) {
     // 如果檔案本來就小於百分之百目標大小，則直接回傳原始檔案，保留原始格式 (如 PNG 透明度)
     if (file.size <= targetSizeKB * 1024) {
         return file;
@@ -447,7 +447,7 @@ imageUpload.addEventListener('change', async function (e) {
         const file = files[i];
 
         // 1. 進行壓縮
-        const compressedFile = await compressImage(file, 50);
+        const compressedFile = await compressImage(file, 200);
         selectedFiles.push(compressedFile); // 儲存壓縮後的實體檔案
 
         // 2. 產生預覽
@@ -1405,7 +1405,7 @@ vendorForm.onsubmit = async function (e) {
     const stampFile = document.getElementById('m-v-stamp').files[0];
     if (stampFile) {
         // 壓縮廠商印章
-        const compressedStamp = await compressImage(stampFile, 50);
+        const compressedStamp = await compressImage(stampFile, 200);
         formData.append('stamp', compressedStamp);
     }
 
@@ -1798,7 +1798,7 @@ async function submitClientSignature() {
             return;
         }
         // 壓縮上傳的簽名圖檔
-        signatureBlob = await compressImage(fileInput.files[0], 50);
+        signatureBlob = await compressImage(fileInput.files[0], 200);
     }
 
     try {
