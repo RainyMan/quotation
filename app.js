@@ -1759,6 +1759,10 @@ async function loadQuotationForView(id) {
         document.getElementById('c-date-input').value = q.date ? q.date.substring(0, 10) : '';
         document.getElementById('c-date-display').innerText = q.date ? q.date.substring(0, 10) : '';
 
+        // 更新頁面標題，讓分享連結預覽顯示正確格式：公司名稱-工程名稱(日期)
+        const datePart = q.date ? q.date.substring(0, 10).replace(/-/g, '') : '';
+        document.title = `${customerName}-${projectName}(${datePart})`;
+
         // 還原比例狀態
         if (q.photo_scale) {
             currentPhotoSize = q.photo_scale;
