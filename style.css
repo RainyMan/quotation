@@ -453,7 +453,30 @@ body {
     appearance: none;
     /* iOS 禁用狀態文字填色與透明度修正 */
     -webkit-text-fill-color: #333 !important;
+    color: #333 !important;
     opacity: 1 !important;
+}
+
+/* 確保公司名稱與工程名稱在列印與檢視模式可見 */
+.view-mode #c-name,
+.view-mode #c-location {
+    display: block !important;
+    visibility: visible !important;
+    color: #333 !important;
+}
+
+/* 確保地圖圖標在螢幕看時顯示，但列印時隱藏 */
+#map-link-btn {
+    /* 預設由 JS 控制 display，這裡確保其風格 */
+    vertical-align: middle;
+}
+
+@media print {
+
+    #map-link-btn,
+    .no-print {
+        display: none !important;
+    }
 }
 
 /* 隱藏 Chrome/Safari 的 datalist 藍色下拉箭頭 */
@@ -622,6 +645,11 @@ body {
     #login-overlay::before {
         display: none;
     }
+}
+
+/* 確保 Google Maps 搜尋建議列表在 Modal 之上 */
+.pac-container {
+    z-index: 2000 !important;
 }
 
 @keyframes rotateBg {

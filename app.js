@@ -150,6 +150,155 @@ function numberToChinese(n) {
         .replace(/^整$/, '零元整');
 }
 
+// --- 5. Google Maps 工程地點功能 ---
+let mapPicker, mapMarker, geocoder;
+let tempLat, tempLng, tempAddress;
+
+async function initMapAutocomplete() {
+    const input = document.getElementById('c-address-search');
+    const display = document.getElementById('c-address-text');
+    const mapBtn = document.getElementById('map-link-btn');
+    const latInp = document.getElementById('c-address-lat');
+    const lngInp = document.getElementById('c-address-lng');
+    const urlInp = document.getElementById('c-address-map-url');
+
+    if (!input || !google.maps.importLibrary) return;
+
+    try {
+        const { Autocomplete } = await google.maps.importLibrary("places");
+        const autocomplete = new Autocomplete(input);
+        autocomplete.addListener('place_changed', function () {
+            const place = autocomplete.getPlace();
+            if (!place.geometry) return;
+            updateAddressData(place);
+        });
+    } catch (e) { console.error("Google Maps Autocomplete 載入失敗:", e); }
+}
+
+function updateAddressData(placeOrResult) {
+    const display = document.getElementById('c-address-text');
+    const mapBtn = document.getElementById('map-link-btn');
+    const latInp = document.getElementById('c-address-lat');
+    const lngInp = document.getElementById('c-address-lng');
+    const urlInp = document.getElementById('c-address-map-url');
+
+    const address = placeOrResult.formatted_address || placeOrResult.name;
+    const lat = typeof placeOrResult.geometry.location.lat === 'function' ? placeOrResult.geometry.location.lat() : placeOrResult.geometry.location.lat;
+    const lng = typeof placeOrResult.geometry.location.lng === 'function' ? placeOrResult.geometry.location.lng() : placeOrResult.geometry.location.lng;
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}${placeOrResult.place_id ? `&query_place_id=${placeOrResult.place_id}` : ''}`;
+
+    if (display) display.innerText = address;
+    if (latInp) latInp.value = lat;
+    if (lngInp) lngInp.value = lng;
+    if (urlInp) urlInp.value = mapUrl;
+    if (mapBtn) {
+        mapBtn.href = mapUrl;
+        mapBtn.style.display = 'inline-block';
+    }
+}
+
+window.openMapPicker = async function () {
+    const modal = new bootstrap.Modal(document.getElementById('mapPickerModal'));
+    modal.show();
+
+    // 延遲初始化以確保容器已渲染
+    setTimeout(async () => {
+        const { Map } = await google.maps.importLibrary("maps");
+        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+        const { Autocomplete } = await google.maps.importLibrary("places");
+        const { Geocoder } = await google.maps.importLibrary("geocoding");
+        geocoder = new Geocoder();
+
+        const defaultPos = { lat: 25.0339, lng: 121.5644 }; // 預設台北 101
+        const currentLat = parseFloat(document.getElementById('c-address-lat').value) || defaultPos.lat;
+        const currentLng = parseFloat(document.getElementById('c-address-lng').value) || defaultPos.lng;
+
+        mapPicker = new Map(document.getElementById('map-picker-container'), {
+            center: { lat: currentLat, lng: currentLng },
+            zoom: 16,
+            mapId: "QUOTATION_MAP_ID", // 需在 Cloud Console 設定 Map ID
+        });
+
+        mapMarker = new AdvancedMarkerElement({
+            map: mapPicker,
+            position: { lat: currentLat, lng: currentLng },
+            gmpDraggable: true,
+            title: "拖移選取地點",
+        });
+
+        // 搜尋功能輔助
+        const modalSearch = document.getElementById('map-modal-search');
+        const modalAutocomplete = new Autocomplete(modalSearch);
+        modalAutocomplete.bindTo("bounds", mapPicker);
+
+        modalAutocomplete.addListener("place_changed", () => {
+            const place = modalAutocomplete.getPlace();
+            if (!place.geometry || !place.geometry.location) return;
+
+            // 讓地圖中心與標記跳轉到搜尋結果
+            mapPicker.setCenter(place.geometry.location);
+            mapPicker.setZoom(17); // 搜尋後自動放大
+            mapMarker.position = place.geometry.location;
+
+            updateTempData(place.geometry.location.lat(), place.geometry.location.lng(), place.formatted_address || place.name);
+        });
+
+        // 標記拖移事件
+        mapMarker.addListener("dragend", (event) => {
+            const pos = mapMarker.position;
+            updateTempData(pos.lat, pos.lng);
+        });
+
+        // 點擊地圖直接移動標記
+        mapPicker.addListener("click", (event) => {
+            mapMarker.position = event.latLng;
+            updateTempData(event.latLng.lat(), event.latLng.lng());
+        });
+
+        // 初始化當前數據
+        updateTempData(currentLat, currentLng, document.getElementById('c-address-text').innerText);
+    }, 300);
+};
+
+async function updateTempData(lat, lng, address = null) {
+    tempLat = lat;
+    tempLng = lng;
+    if (address) {
+        tempAddress = address;
+        document.getElementById('map-picker-address').innerText = address;
+    } else {
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+            if (status === "OK" && results[0]) {
+                tempAddress = results[0].formatted_address;
+                document.getElementById('map-picker-address').innerText = tempAddress;
+            }
+        });
+    }
+}
+
+window.confirmMapSelection = function () {
+    const display = document.getElementById('c-address-text');
+    const latInp = document.getElementById('c-address-lat');
+    const lngInp = document.getElementById('c-address-lng');
+    const urlInp = document.getElementById('c-address-map-url');
+    const mapBtn = document.getElementById('map-link-btn');
+
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${tempLat},${tempLng}`;
+
+    if (display) display.innerText = tempAddress;
+    if (latInp) latInp.value = tempLat;
+    if (lngInp) lngInp.value = tempLng;
+    if (urlInp) urlInp.value = mapUrl;
+    if (mapBtn) {
+        mapBtn.href = mapUrl;
+        mapBtn.style.display = 'inline-block';
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById('mapPickerModal')).hide();
+};
+
+
+
 // --- 4. 即時計算功能 ---
 // --- 4. 即時計算功能 ---
 function calculateTotals() {
@@ -846,6 +995,12 @@ window.saveQuotation = async function (isCopy = false) {
         formData.append('photo_scale', currentPhotoSize); // 儲存照片縮放比例
         // 移除 stamp_scale，改為由廠商資料控制
 
+        // 工程地點相關
+        formData.append('project_address', document.getElementById('c-address-text').innerText);
+        formData.append('project_lat', document.getElementById('c-address-lat').value);
+        formData.append('project_lng', document.getElementById('c-address-lng').value);
+        formData.append('project_map_url', document.getElementById('c-address-map-url').value);
+
         // 取得 image-upload 中的真實 File 物件 (注意：此前的 uploadedImages 是 DataURL，我們要改用原始檔案)
         const fileInput = document.getElementById('image-upload-files') || { files: [] }; // 假設我們調整 HTML 使用隱藏 input 存檔案
         // 處理照片：保留舊的 + 新增新的
@@ -1124,6 +1279,19 @@ window.editQuotation = async function (id) {
             const pScaleVal = document.getElementById('photo-scale-val');
             if (pScaleInput) pScaleInput.value = currentPhotoSize;
             if (pScaleVal) pScaleVal.innerText = currentPhotoSize;
+        }
+
+        // 還原工程地點
+        const addrText = q.project_address || "";
+        const mapUrl = q.project_map_url || "";
+        if (document.getElementById('c-address-text')) document.getElementById('c-address-text').innerText = addrText;
+        if (document.getElementById('c-address-lat')) document.getElementById('c-address-lat').value = q.project_lat || "";
+        if (document.getElementById('c-address-lng')) document.getElementById('c-address-lng').value = q.project_lng || "";
+        if (document.getElementById('c-address-map-url')) document.getElementById('c-address-map-url').value = mapUrl;
+        const mapBtn = document.getElementById('map-link-btn');
+        if (mapBtn && mapUrl) {
+            mapBtn.href = mapUrl;
+            mapBtn.style.display = 'inline-block';
         }
 
         // 注意：印章比例現在由 vendorSelect.onchange 在載入廠商資訊時自動處理
@@ -1579,11 +1747,13 @@ async function loadQuotationForView(id) {
 
         document.getElementById('quo-number').innerText = q.quo_number;
         const customerName = (q.customer_name || "").trim();
+        const projectName = (q.project_name || q.project_location || "").trim();
+
         setValOrText('c-name', customerName);
+        setValOrText('c-location', projectName);
+
         const sigCName = document.getElementById('sig-c-name');
         if (sigCName) sigCName.innerText = customerName;
-
-        setValOrText('c-location', (q.project_name || q.project_location || "").trim());
         setValOrText('c-contact', (q.customer_contact || "").trim());
         setValOrText('c-phone', (q.customer_phone || "").trim());
         document.getElementById('c-date-input').value = q.date ? q.date.substring(0, 10) : '';
@@ -1596,6 +1766,16 @@ async function loadQuotationForView(id) {
             const pScaleVal = document.getElementById('photo-scale-val');
             if (pScaleInput) pScaleInput.value = currentPhotoSize;
             if (pScaleVal) pScaleVal.innerText = currentPhotoSize;
+        }
+
+        // 訪客模式還原工程地點
+        const addrText = q.project_address || "";
+        const mapUrl = q.project_map_url || "";
+        if (document.getElementById('c-address-text')) document.getElementById('c-address-text').innerText = addrText;
+        const mapBtn = document.getElementById('map-link-btn');
+        if (mapBtn && mapUrl) {
+            mapBtn.href = mapUrl;
+            mapBtn.style.display = 'inline-block';
         }
 
         // 訪客模式：如果有 vendor 資訊，套用廠商預設印章大小
