@@ -14,16 +14,21 @@
 - **智能字典與預設**：儲存報價單時自動學習新增品項，支援常用備註勾選同步。
 - **廠商切換系統**：支援多廠商管理，自定義每個廠商的印章樣式與縮放比例。
 
-### 2. 歷史紀錄與版本控制
-- **雲端同步**：即時同步至雲端資料庫（PocketBase），支援複製舊單為範本。
-- **版本排序**：依照日期、最後更新時間靈活排序，追蹤工程進度。
+### 2. Google 地圖工程定位與導航
+- **互動式地圖選取**：內建 Google Maps 視窗，支援地址搜尋、標記拖移以及點擊定位，精確記錄工程座標。
+- **智能導航圖標**：選定地點後，工程名稱旁自動出現 Google Maps 圖標，連結至即時路況與導航。
+- **精準權限顯示**：地圖圖標在「分享連結」中保持開啟，方便甲方導覽；在「列印模式」下則自動隱藏，確保紙本正式。
 
-### 3. 線上回簽功能 (甲方)
+### 3. 內部成本與利潤分析
+- **即時利潤試算**：右側專屬內部面板，可輸入每項品項的預估成本，系統自動計算總利潤，輔助初步估價與議價決策。
+- **高隱私設計**：成本與利潤資訊僅在內部編輯模式顯示，列印與分享連結中絕對隱藏。
+
+### 4. 線上回簽功能 (甲方)
 - **專屬分享連結**：支援產生唯一加密分享連結，甲方可線上進行「手寫簽名」或「上傳電子章」。
 - **靈活簽章模式**：可自由開啟或關閉「甲方簽名欄位」，適配不同的報價場景。
 - **狀態管理**：後台即時顯示「未簽名/已回簽」標籤，支援回簽章刪除功能。
 
-### 4. 高端 UI 控制與列印優化
+### 5. 高端 UI 控制與列印優化
 - **浮動式左側控制面板**：
     - **印章縮放**：即時調整廠商印章與甲方簽署的大小（自動儲存至廠商資料庫）。
     - **照片縮放**：滑桿即時控制下方「照片附件」的顯示寬度（100px - 800px）。
@@ -35,14 +40,16 @@
 ## 🛠 技術棧
 - **Frontend**: HTML5, Vanilla CSS (Modern Design), JavaScript (ES6+)
 - **CSS Framework**: Bootstrap 5.3 + Custom UI System
+- **API**: Google Maps JavaScript API (Maps, Places, Marker, Geocoding)
 - **Backend**: PocketBase (Cloud Deployment)
-- **Library**: Signature Pad, Google Fonts (Noto Sans TC, Outfit)
+- **Library**: Signature Pad, Google Fonts (Noto Sans TC, Outfit), SortableJS
 
 ## 📁 資料庫結構 (PocketBase)
 欲自行部署，請確保 Collections 包含以下欄位：
 - `quotations`: 
     - `manual_totals` (JSON): 儲存議價狀態。
     - `photo_scale` (Number): 照片縮放比例。
+    - `project_lat` / `project_lng` / `project_map_url` (Text/Number): 地理定位資訊。
     - `is_party_a_signature_needed` (Bool): 甲方簽名開關。
     - `images` (File): 附件照片。
 - `vendors`: 
