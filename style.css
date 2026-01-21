@@ -218,10 +218,6 @@ body {
         width: 210mm;
     }
 
-    .print-only {
-        display: inline-block !important;
-    }
-
     .a4-page {
         width: 100% !important;
         min-height: auto !important;
