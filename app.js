@@ -1764,10 +1764,15 @@ async function loadQuotationForView(id) {
         const fullTitle = `${customerName}-${projectName}(${datePart})`;
         document.title = fullTitle;
 
+        const dynamicDesc = `大馬道路工程報價單：${customerName} - ${projectName}。點擊查看詳細品項與進行線上簽署。`;
         const metaDesc = document.querySelector('meta[name="description"]');
-        if (metaDesc) {
-            metaDesc.setAttribute("content", `大馬道路工程報價單：${customerName} - ${projectName}。點擊查看詳細品項與進行線上簽署。`);
-        }
+        if (metaDesc) metaDesc.setAttribute("content", dynamicDesc);
+
+        // 同步更新 OG 標籤 (針對支援 JS 的預覽工具)
+        const ogTitle = document.querySelector('meta[property="og:title"]');
+        const ogDesc = document.querySelector('meta[property="og:description"]');
+        if (ogTitle) ogTitle.setAttribute("content", fullTitle);
+        if (ogDesc) ogDesc.setAttribute("content", dynamicDesc);
 
         // 還原比例狀態
         if (q.photo_scale) {
