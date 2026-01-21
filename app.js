@@ -52,7 +52,72 @@ let currentPhotoSize = 400;
 let historySort = { field: 'last_updated', direction: 'desc' }; // 預設依最後更新由新到舊
 
 
-// --- 3. 國字大寫轉換與備註功能 ---
+// --- 3. 核心工具函式 (圖片壓縮等) ---
+/**
+ * 將圖片壓縮至指定大小 (預設 300KB)
+ * @param {File} file 原始檔案
+ * @param {number} targetSizeKB 目標大小 (KB)
+ * @returns {Promise<File>} 壓縮後的檔案
+ */
+async function compressImage(file, targetSizeKB = 50) {
+    // 如果檔案本來就小於百分之百目標大小，則直接回傳原始檔案，保留原始格式 (如 PNG 透明度)
+    if (file.size <= targetSizeKB * 1024) {
+        return file;
+    }
+
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // 限制最大解析度，避免超大圖導致記憶體崩潰或壓縮率過低
+                const MAX_WIDTH = 1920;
+                const MAX_HEIGHT = 1920;
+
+                if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+                    if (width > height) {
+                        height = Math.round((height * MAX_WIDTH) / width);
+                        width = MAX_WIDTH;
+                    } else {
+                        width = Math.round((width * MAX_HEIGHT) / height);
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // 遞進式壓縮：從高品質開始嘗試
+                let quality = 0.9;
+                const iterate = () => {
+                    canvas.toBlob((blob) => {
+                        if (blob.size <= targetSizeKB * 1024 || quality <= 0.1) {
+                            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            resolve(compressedFile);
+                        } else {
+                            quality -= 0.1;
+                            iterate();
+                        }
+                    }, 'image/jpeg', quality);
+                };
+                iterate();
+            };
+        };
+    });
+}
+
+// --- 4. 國字大寫轉換與備註功能 ---
 function addMemo(text) {
     const memoField = document.getElementById('memo-field');
     const existingContent = memoField.innerHTML.trim();
@@ -373,17 +438,25 @@ window.removeImage = function (index) {
     updateAttachmentLayout();
 };
 
-imageUpload.addEventListener('change', function (e) {
+imageUpload.addEventListener('change', async function (e) {
     const files = e.target.files;
+    if (!files.length) return;
+
+    // 顯示上傳中提示 (如有需要可加入)
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        selectedFiles.push(file); // 儲存實體檔案
+
+        // 1. 進行壓縮
+        const compressedFile = await compressImage(file, 50);
+        selectedFiles.push(compressedFile); // 儲存壓縮後的實體檔案
+
+        // 2. 產生預覽
         const reader = new FileReader();
         reader.onload = function (event) {
             uploadedImages.push(event.target.result);
             updateAttachmentLayout();
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(compressedFile);
     }
     imageUpload.value = '';
 });
@@ -1331,7 +1404,9 @@ vendorForm.onsubmit = async function (e) {
 
     const stampFile = document.getElementById('m-v-stamp').files[0];
     if (stampFile) {
-        formData.append('stamp', stampFile);
+        // 壓縮廠商印章
+        const compressedStamp = await compressImage(stampFile, 50);
+        formData.append('stamp', compressedStamp);
     }
 
     try {
@@ -1722,7 +1797,8 @@ async function submitClientSignature() {
             alert('請先選擇簽名圖檔');
             return;
         }
-        signatureBlob = fileInput.files[0];
+        // 壓縮上傳的簽名圖檔
+        signatureBlob = await compressImage(fileInput.files[0], 50);
     }
 
     try {
