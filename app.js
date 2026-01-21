@@ -1759,9 +1759,15 @@ async function loadQuotationForView(id) {
         document.getElementById('c-date-input').value = q.date ? q.date.substring(0, 10) : '';
         document.getElementById('c-date-display').innerText = q.date ? q.date.substring(0, 10) : '';
 
-        // 更新頁面標題，讓分享連結預覽顯示正確格式：公司名稱-工程名稱(日期)
+        // 更新頁面標題與描述，供分享連結預覽
         const datePart = q.date ? q.date.substring(0, 10).replace(/-/g, '') : '';
-        document.title = `${customerName}-${projectName}(${datePart})`;
+        const fullTitle = `${customerName}-${projectName}(${datePart})`;
+        document.title = fullTitle;
+
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) {
+            metaDesc.setAttribute("content", `大馬道路工程報價單：${customerName} - ${projectName}。點擊查看詳細品項與進行線上簽署。`);
+        }
 
         // 還原比例狀態
         if (q.photo_scale) {
