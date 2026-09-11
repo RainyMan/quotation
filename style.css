@@ -701,3 +701,24 @@ body {
 #document-title[role="button"] { cursor: pointer; }
 #document-title[role="button"]:focus-visible { outline: 2px solid #0d6efd; outline-offset: 4px; }
 #document-title.payment-title { color: #14532d !important; }
+
+/* Payment requests share one green accent throughout the document. */
+#quotation-print-area.payment-document {
+    --bs-primary-rgb: 20, 83, 45;
+    --bs-link-color-rgb: 20, 83, 45;
+    --bs-link-hover-color-rgb: 15, 64, 34;
+}
+.payment-document .btn-primary, .payment-document .btn-outline-primary {
+    --bs-btn-color: #14532d;
+    --bs-btn-border-color: #14532d;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #14532d;
+    --bs-btn-hover-border-color: #14532d;
+    --bs-btn-active-bg: #0f4022;
+    --bs-btn-active-border-color: #0f4022;
+}
+.payment-document .btn-primary { --bs-btn-color: #fff; --bs-btn-bg: #14532d; }
+.payment-document .memo-row button.memo-control { color: #14532d; }
+.payment-document .column-resizer:hover, .payment-document .column-resizer:focus { background: #14532d66; }
+.payment-document #sig-client-display.needs-signature { border-color: #14532d !important; }
+.payment-document #sig-client-display.needs-signature::after { color: #14532d; }

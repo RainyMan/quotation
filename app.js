@@ -1061,6 +1061,11 @@ async function loadHistory() {
             filters.push(`date <= "${dateEnd} 23:59:59"`);
         }
 
+        const selectedStatuses = [...document.querySelectorAll('.history-status:checked')]
+            .map(el => el.value).filter(value => ['awarded', 'billing', 'paid'].includes(value));
+        if (selectedStatuses.length) {
+            filters.push('(' + selectedStatuses.map(value => `workflow_status = "${value}"`).join(' || ') + ')');
+        }
         filterStr = filters.join(' && ');
 
         // 構建排序字串 (PocketBase 語法: field 或 -field)
@@ -2333,3 +2338,5 @@ document.addEventListener('DOMContentLoaded', () => {
 initQuotationEditor();
 
 initWorkflow();
+
+document.querySelectorAll('.history-status').forEach(el => el.addEventListener('change', loadHistory));

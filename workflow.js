@@ -2,7 +2,7 @@ const workflowStates = {
     quoted: ['報價中', 'bg-secondary'],
     awarded: ['已得標', 'bg-warning text-dark'],
     billing: ['請款中', 'bg-success'],
-    paid: ['★ 已收款結案', 'bg-dark']
+    paid: ['已結案', 'bg-danger text-white']
 };
 let workflowState = 'quoted';
 let documentType = 'quotation';
@@ -21,6 +21,7 @@ function renderDocumentType() {
     title.textContent = billing ? '工程請款單' : '工程報價單';
     title.classList.toggle('text-primary', !billing);
     title.classList.toggle('payment-title', billing);
+    document.getElementById('quotation-print-area').classList.toggle('payment-document', billing);
     title.setAttribute('aria-pressed', String(billing));
     document.getElementById('document-subtitle').textContent = billing ? 'Construction Payment Request' : 'Construction Quotation';
     const badge = document.getElementById('current-workflow');
@@ -67,7 +68,7 @@ function addWorkflowActions(tr, q) {
     for (const status of ['quoted', 'awarded', 'billing', 'paid']) {
         const button = document.createElement('button');
         const [label] = workflowStates[status];
-        button.className = `btn btn-sm ${status === 'awarded' ? 'btn-warning' : status === 'billing' ? 'btn-success' : 'btn-outline-secondary'}`;
+        button.className = `btn btn-sm ${status === 'awarded' ? 'btn-warning' : status === 'billing' ? 'btn-success' : status === 'paid' ? 'btn-danger' : 'btn-outline-secondary'}`;
         button.textContent = label;
         button.disabled = (q.workflow_status || 'quoted') === status;
         button.addEventListener('click', async event => {
@@ -132,8 +133,8 @@ function initWorkflow() {
         const toggle = async () => {
             if (title.getAttribute('aria-busy') === 'true') return;
             const type = documentType === 'quotation' ? 'payment_request' : 'quotation';
-            // Switching back changes the document only; retain the latest project status.
-            const status = type === 'payment_request' ? 'billing' : workflowState;
+            // Keep document type and project status synchronized in both directions.
+            const status = type === 'payment_request' ? 'billing' : 'quoted';
             title.setAttribute('aria-busy', 'true');
             try {
                 if (currentQuotationId) await updateWorkflowRecord(currentQuotationId, status, type);

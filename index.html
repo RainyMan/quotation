@@ -17,7 +17,7 @@
         rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="style.css?v=1.3.0">
+    <link rel="stylesheet" href="style.css?v=1.3.1">
     <!-- Signature Pad -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <!-- SortableJS -->
@@ -454,6 +454,12 @@
                             <button class="btn btn-primary w-100" id="btn-history-filter">篩選</button>
                         </div>
                     </div>
+                    <fieldset class="mb-3" id="history-status-filters">
+                        <legend class="small fw-bold mb-2">案件狀態（可複選，未勾選顯示全部）</legend>
+                        <label class="me-3"><input type="checkbox" class="form-check-input history-status" value="awarded"> 已得標</label>
+                        <label class="me-3"><input type="checkbox" class="form-check-input history-status" value="billing"> 請款中</label>
+                        <label class="me-3"><input type="checkbox" class="form-check-input history-status" value="paid"> 已結案</label>
+                    </fieldset>
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
@@ -640,9 +646,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/pocketbase/dist/pocketbase.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="workflow.js?v=1.3.0"></script>
+    <script src="workflow.js?v=1.3.1"></script>
     <script src="quotation-editor.js?v=1"></script>
-    <script src="app.js?v=1.3.0"></script>
+    <script src="app.js?v=1.3.1"></script>
 </body>
 
 </html>
