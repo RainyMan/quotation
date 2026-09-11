@@ -661,3 +661,34 @@ body {
         transform: rotate(360deg);
     }
 }
+/* Adjustable quotation columns and readable long values. */
+#items-table { table-layout: fixed; width: 100%; }
+#items-table th { position: relative; overflow-wrap: anywhere; }
+#items-table td { overflow-wrap: anywhere; }
+.column-resizer { position: absolute; right: -5px; top: 0; bottom: 0; width: 10px; cursor: col-resize; touch-action: none; z-index: 2; }
+.column-resizer:hover, .column-resizer:focus { background: #0d6efd66; }
+.item-display { display: block; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 1.5em; }
+#items-table td:has(> input) { position: relative; }
+#items-table td > input:not(:focus) { position: absolute; inset: 0; height: 100%; opacity: 0; cursor: text; }
+#items-table td > input:focus + .item-display { display: none; }
+.memo-row { display: flex; align-items: flex-start; gap: 4px; margin-bottom: 6px; }
+.memo-number { flex: none; padding-top: 3px; }
+.memo-body { flex: 1; min-width: 0; position: relative; }
+.memo-text { display: block; width: 100%; border: 0; border-bottom: 1px dashed #ced4da; background: transparent; resize: none; overflow: hidden; line-height: 1.5; padding: 3px; }
+.memo-display { display: none; white-space: pre-wrap; overflow-wrap: anywhere; }
+.memo-control { flex: none; }
+.memo-row button.memo-control { border: 0; background: transparent; color: #0d6efd; padding: 2px; }
+.memo-grip { cursor: grab; touch-action: none; }
+.memo-suggestions { position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 220px; overflow-y: auto; background: white; box-shadow: 0 3px 12px #0003; }
+.memo-suggestions button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #eee; padding: 8px; background: white; white-space: normal; overflow-wrap: anywhere; }
+.memo-suggestions button:hover, .memo-suggestions button:focus { background: #e8f0ff; }
+.view-mode .memo-control, .view-mode .memo-text, .view-mode .memo-suggestions { display: none !important; }
+.view-mode .memo-display { display: block; }
+@media print {
+    #items-table td > input { display: none !important; }
+    #items-table .item-display, #items-table td > input:focus + .item-display { display: block !important; }
+    .memo-text, .memo-control, .memo-suggestions { display: none !important; }
+    .memo-display { display: block; }
+    .memo-row { break-inside: avoid; }
+    .memo-body { overflow: visible; }
+}

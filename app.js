@@ -119,11 +119,7 @@ async function compressImage(file, targetSizeKB = 200) {
 
 // --- 4. 國字大寫轉換與備註功能 ---
 function addMemo(text) {
-    const memoField = document.getElementById('memo-field');
-    const existingContent = memoField.innerHTML.trim();
-    const lines = existingContent ? existingContent.split(/<br>|<div>/).length : 0;
-    const prefix = existingContent !== "" ? "<br>" : "";
-    memoField.innerHTML += `${prefix}${lines + 1}. ${text}`;
+    appendMemoRow(text);
 }
 
 function numberToChinese(n) {
@@ -302,6 +298,7 @@ window.confirmMapSelection = function () {
 // --- 4. 即時計算功能 ---
 // --- 4. 即時計算功能 ---
 function calculateTotals() {
+    queueMicrotask(syncItemDisplays);
     let subtotal = 0;
     let totalCost = 0;
     const rows = itemsBody.querySelectorAll('tr');
@@ -619,38 +616,9 @@ function getFileUrl(collection, record, filename) {
 }
 
 async function loadMemoPresets() {
-    const presetContainer = document.getElementById('memo-presets-container');
-    if (!presetContainer) return;
     try {
         const records = await pb.collection('memo_presets').getFullList({ sort: 'content', '$autoCancel': false });
-
-        // 去重處理
-        const uniqueMemos = [...new Set(records.map(r => r.content.trim()))];
-
-        presetContainer.innerHTML = '';
-        uniqueMemos.forEach((content, index) => {
-            const div = document.createElement('div');
-            // 使用自定義 flex 佈局避免 Bootstrap form-check 可能的邊距問題
-            div.className = 'd-flex align-items-center justify-content-between mb-2 p-1 border-bottom-dashed';
-            div.innerHTML = `
-                <div class="d-flex align-items-center flex-grow-1">
-                    <input class="form-check-input memo-checkbox me-2 mt-0" type="checkbox" value="${content}" id="memo-${index}">
-                    <label class="form-check-label small cursor-pointer flex-grow-1 mb-0" for="memo-${index}">${content}</label>
-                </div>
-                <i class="bi bi-x-circle text-danger ms-2 cursor-pointer" onclick="event.stopPropagation(); deleteMemoPreset('${content}')" title="刪除此預設值"></i>
-            `;
-            presetContainer.appendChild(div);
-        });
-
-        // 監聽所有核取方塊
-        presetContainer.querySelectorAll('.memo-checkbox').forEach(cb => {
-            cb.addEventListener('change', syncMemoPresets);
-        });
-
-        // 防止點擊選單內部時自動關閉下拉選單
-        presetContainer.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
+        memoSuggestions = [...new Set(records.map(r => (r.content || '').trim()).filter(Boolean))];
     } catch (e) {
         console.error('載入預設說明失敗', e);
     }
@@ -672,20 +640,6 @@ window.deleteMemoPreset = async function (content) {
         alert('刪除失敗');
     }
 };
-
-function syncMemoPresets() {
-    const checkboxes = document.querySelectorAll('.memo-checkbox:checked');
-    const memoField = document.getElementById('memo-field');
-
-    // 取得目前手動編輯過的其他行（如果需要保留，但通常多選是為了覆蓋或重新產生）
-    // 這裡我們採取「重新產生」策略：1. 2. 3. ...
-    let newContent = '';
-    checkboxes.forEach((cb, i) => {
-        newContent += `${i + 1}. ${cb.value}<br>`;
-    });
-
-    memoField.innerHTML = newContent;
-}
 
 // --- 10. 品項字典與自動補全 ---
 let itemDictionary = [];
@@ -912,7 +866,7 @@ window.saveQuotation = async function (isCopy = false) {
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>儲存中...';
 
-        const memoHtml = document.getElementById('memo-field').innerHTML;
+        const memoHtml = serializeMemo();
         const items = [];
         const rows = itemsBody.querySelectorAll('tr');
         const costInputs = document.querySelectorAll('.internal-cost-input');
@@ -1043,7 +997,7 @@ window.saveQuotation = async function (isCopy = false) {
         }
 
         // 解析補充說明並自動同步到 memo_presets (重複檢查)
-        const memoLines = document.getElementById('memo-field').innerText.split('\n');
+        const memoLines = getMemoLines();
         // 先取得現有 presets
         const existingPresets = await pb.collection('memo_presets').getFullList();
         const existingContents = existingPresets.map(p => p.content.trim());
@@ -1301,7 +1255,7 @@ window.editQuotation = async function (id) {
 
         const memoEl = document.getElementById('memo-field');
         const memoContainer = document.getElementById('memo-container');
-        if (memoEl) memoEl.innerHTML = q.memo_html || "";
+        if (memoEl) restoreMemo(q.memo_html || "");
         if (memoContainer) memoContainer.style.display = 'block';
 
         // 還原品項
@@ -1834,11 +1788,11 @@ async function loadQuotationForView(id) {
         const memoContent = (q.memo_html || '').trim();
         const memoField = document.getElementById('memo-field');
         const memoContainer = document.getElementById('memo-container');
-        memoField.innerHTML = memoContent;
+        restoreMemo(memoContent);
 
         // 如果在檢視模式且備註為空，隱藏整個備註區塊
         if (memoContainer) {
-            if (!memoContent || memoContent === '<br>') {
+            if (!getMemoLines().some(line => line.trim())) {
                 memoContainer.style.display = 'none';
             } else {
                 memoContainer.style.display = 'block';
@@ -2370,3 +2324,5 @@ function handleLoginError(msg) {
 document.addEventListener('DOMContentLoaded', () => {
     initPinLogic();
 });
+
+initQuotationEditor();
