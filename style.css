@@ -671,6 +671,11 @@ body {
 #items-table td:has(> input) { position: relative; }
 #items-table td > input:not(:focus) { position: absolute; inset: 0; height: 100%; opacity: 0; cursor: text; }
 #items-table td > input:focus + .item-display { display: none; }
+/* Shared quotations render the wrapping text only. The legacy view-mode
+   input opacity rule must not expose the underlying editing control. */
+.view-mode #items-table td > input { display: none !important; }
+.view-mode #items-table td > .item-display { display: block !important; }
+
 .memo-row { display: flex; align-items: flex-start; gap: 4px; margin-bottom: 6px; }
 .memo-number { flex: none; padding-top: 3px; }
 .memo-body { flex: 1; min-width: 0; position: relative; }
