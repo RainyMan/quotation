@@ -17,7 +17,7 @@
         rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="style.css?v=1.2.1">
+    <link rel="stylesheet" href="style.css?v=1.3.0">
     <!-- Signature Pad -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <!-- SortableJS -->
@@ -114,8 +114,8 @@
             <div class="row border-bottom pb-4 mb-4">
                 <div class="col-5">
                     <!-- Logo/Title Area -->
-                    <h1 class="display-5 fw-bold text-primary mb-0">工程報價單</h1>
-                    <p class="text-muted small mb-0">Construction Quotation</p>
+                    <h1 id="document-title" class="display-5 fw-bold text-primary mb-0">工程報價單</h1>
+                    <p id="document-subtitle" class="text-muted small mb-0">Construction Quotation</p>
                     <p class="text-muted small">單號：<span id="quo-number">---</span></p>
                 </div>
                 <div class="col-7 text-end">
@@ -640,8 +640,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/pocketbase/dist/pocketbase.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="workflow.js?v=1.3.0"></script>
     <script src="quotation-editor.js?v=1"></script>
-    <script src="app.js?v=1.2.0"></script>
+    <script src="app.js?v=1.3.0"></script>
 </body>
 
 </html>

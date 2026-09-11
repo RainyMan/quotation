@@ -927,6 +927,7 @@ window.saveQuotation = async function (isCopy = false) {
             return (el.value || el.innerText || "").trim();
         };
 
+        appendWorkflowData(formData);
         formData.append('quo_number', document.getElementById('quo-number').innerText);
         formData.append('customer_name', getElVal('c-name'));
         // 同時傳送 project_location 與 project_name 以相容資料庫設定
@@ -979,7 +980,9 @@ window.saveQuotation = async function (isCopy = false) {
         }
 
         console.log('儲存成功，回傳紀錄內容:', record);
-        currentQuotationId = record.id; // 儲存後標記為正在編輯此單
+        currentQuotationId = record.id;
+        verifyWorkflowSave(record);
+        restoreWorkflow(record); // 儲存後標記為正在編輯此單
 
         // 同步更新當前廠商的印章比例到廠商資料庫
         const selectedVendorId = vendorSelect.value;
@@ -1122,9 +1125,7 @@ async function loadHistory() {
                 }
             }
 
-            const statusBadge = q.signature_client
-                ? '<span class="badge rounded-pill bg-success">已回簽</span>'
-                : '<span class="badge rounded-pill bg-danger">未簽名</span>';
+            const statusBadge = workflowBadge(q);
 
             tr.innerHTML = `
                 <td>${q.quo_number || '---'}</td>
@@ -1143,6 +1144,7 @@ async function loadHistory() {
                 </td>
             `;
             tr.onclick = () => editQuotation(q.id);
+            addWorkflowActions(tr, q);
             historyBody.appendChild(tr);
         });
     } catch (e) {
@@ -1193,6 +1195,7 @@ window.editQuotation = async function (id) {
     try {
         const q = await pb.collection('quotations').getOne(id, { '$autoCancel': false });
         console.log('取得報價單原始資料:', q);
+        restoreWorkflow(q);
         currentQuotationId = q.id; // 標記正在編輯此單
 
         // 還原基本資訊 (加入安全檢查)
@@ -1343,6 +1346,7 @@ window.editQuotation = async function (id) {
 
 window.copyQuotation = async function (id) {
     await editQuotation(id);
+    restoreWorkflow({});
     currentQuotationId = null; // 複製時清空 ID，視為新單儲存
     await initQuotationInfo(); // 更新為今日單號
     alert('已載入資料並更新為今日單號，請修改後儲存。');
@@ -1690,6 +1694,7 @@ async function checkViewMode() {
 async function loadQuotationForView(id) {
     try {
         const q = await pb.collection('quotations').getOne(id, { expand: 'vendor', '$autoCancel': false });
+        restoreWorkflow(q);
 
         // 填充基本資訊
         const setValOrText = (id, val) => {
@@ -2071,7 +2076,7 @@ function setupSignatureModeToggle() {
 
 // --- 12. 初始化執行 (放在最末以確保所有函數與變數都已定義) ---
 addRowBtn.addEventListener('click', createRow);
-document.getElementById('btn-save').addEventListener('click', saveQuotation);
+document.getElementById('btn-save').addEventListener('click', () => saveQuotation());
 document.getElementById('btn-history').addEventListener('click', loadHistory);
 document.getElementById('btn-history-filter').addEventListener('click', loadHistory);
 
@@ -2326,3 +2331,5 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 initQuotationEditor();
+
+initWorkflow();
