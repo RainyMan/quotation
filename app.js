@@ -927,6 +927,7 @@ window.saveQuotation = async function (isCopy = false) {
             return (el.value || el.innerText || "").trim();
         };
 
+        await appendProtectedStamp(formData);
         appendWorkflowData(formData);
         formData.append('quo_number', document.getElementById('quo-number').innerText);
         formData.append('customer_name', getElVal('c-name'));
@@ -981,6 +982,7 @@ window.saveQuotation = async function (isCopy = false) {
 
         console.log('儲存成功，回傳紀錄內容:', record);
         currentQuotationId = record.id;
+        verifyProtectedStamp(record, formData);
         verifyWorkflowSave(record);
         restoreWorkflow(record); // 儲存後標記為正在編輯此單
 
@@ -1575,12 +1577,7 @@ vendorSelect.onchange = function () {
             if (sigImgArea) sigImgArea.style.width = `${currentStampSize}px`;
         }
 
-        if (v.stamp) {
-            stampImgArea.src = getFileUrl('vendors', v, v.stamp);
-            stampImgArea.style.display = 'block';
-        } else {
-            stampImgArea.style.display = 'none';
-        }
+        refreshProtectedStamp();
     }
 };
 
@@ -1698,7 +1695,7 @@ async function checkViewMode() {
 
 async function loadQuotationForView(id) {
     try {
-        const q = await pb.collection('quotations').getOne(id, { expand: 'vendor', '$autoCancel': false });
+        const q = await pb.collection('quotations').getOne(id, { expand: 'vendor', fields: sharedQuotationFields, '$autoCancel': false });
         restoreWorkflow(q);
 
         // 填充基本資訊
@@ -1847,11 +1844,9 @@ async function loadQuotationForView(id) {
             document.getElementById('v-website').innerText = v.website || '';
             document.getElementById('v-email').innerText = v.email || '';
             document.getElementById('sig-v-name').innerText = v.name;
-            if (v.stamp) {
-                stampImgArea.src = getFileUrl('vendors', v, v.stamp);
-                stampImgArea.style.display = 'block';
-            }
         }
+
+        showSharedStamp(q);
 
         // 甲方簽名處理
         const sigDisplay = document.getElementById('sig-client-display');
@@ -2086,7 +2081,7 @@ document.getElementById('btn-history').addEventListener('click', loadHistory);
 document.getElementById('btn-history-filter').addEventListener('click', loadHistory);
 
 // 核心初始化
-initQuotationInfo();
+if (!isViewMode) initQuotationInfo();
 setupDynamicSync();
 setupSignatureModeToggle();
 
@@ -2103,13 +2098,14 @@ if (typeof Sortable !== 'undefined') {
     });
 }
 
-loadMemoPresets();
-renderVendors();
-updateItemsDatalist();
-loadItemPresets();
-console.log('正在初始化客戶功能...');
-updateCustomersDatalist();
-setupCustomerAutoFill();
+if (!isViewMode) {
+    loadMemoPresets();
+    renderVendors();
+    updateItemsDatalist();
+    loadItemPresets();
+    updateCustomersDatalist();
+    setupCustomerAutoFill();
+}
 
 // 監聽客戶搜尋框
 const customerSearchInput = document.getElementById('customer-search-input');
@@ -2206,6 +2202,10 @@ async function syncPinFromDb() {
 }
 
 async function initPinLogic() {
+    if (isViewMode) {
+        if (loginOverlay) loginOverlay.style.display = 'none';
+        return;
+    }
     await syncPinFromDb();
 
     // 1. 檢查是否已登入 (排除檢視模式)
@@ -2340,3 +2340,5 @@ initQuotationEditor();
 initWorkflow();
 
 document.querySelectorAll('.history-status').forEach(el => el.addEventListener('change', loadHistory));
+
+initShareProtection();
