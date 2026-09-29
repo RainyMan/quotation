@@ -726,4 +726,4 @@ body {
 .protected-share #quotation-print-area { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .protected-share #quotation-print-area img { pointer-events: none; -webkit-user-drag: none; }
 .protected-share #quotation-print-area a { pointer-events: none; cursor: default; }
-@media print { body.protected-share > * { display: none !important; } }
+

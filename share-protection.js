@@ -102,7 +102,6 @@ function initShareProtection() {
         return;
     }
     document.body.classList.add('protected-share');
-    document.querySelector('#view-mode-toolbar button')?.remove();
     // Deterrents for casual copying only. Screenshots and browser tools remain possible.
     for (const event of ['copy','cut','dragstart','contextmenu']) {
         document.addEventListener(event, e => {
@@ -114,6 +113,6 @@ function initShareProtection() {
         if (e.target.closest?.('#quotation-print-area a')) e.preventDefault();
     }, true);
     document.addEventListener('keydown', e => {
-        if ((e.ctrlKey || e.metaKey) && ['s','p','c','u'].includes(e.key.toLowerCase()) && !e.target.closest?.('.modal')) e.preventDefault();
+        if ((e.ctrlKey || e.metaKey) && ['s','c','u'].includes(e.key.toLowerCase()) && !e.target.closest?.('.modal')) e.preventDefault();
     });
 }
