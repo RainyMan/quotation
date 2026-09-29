@@ -42,7 +42,7 @@ async function buildProtectedStamp() {
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate(-Math.PI / 8);
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(35, 55, 65, 0.55)';
+    ctx.fillStyle = 'rgba(35, 55, 65, 0.20)';
     ctx.font = 'bold 34px sans-serif';
     for (let y = -canvas.height; y <= canvas.height; y += 160) {
         ctx.fillText('僅供本次報價使用', 0, y, 900);
