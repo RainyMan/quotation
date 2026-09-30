@@ -1885,6 +1885,7 @@ async function loadQuotationForView(id) {
             el.style.backgroundColor = 'transparent';
         });
         document.querySelectorAll('.btn-remove-row, #add-row').forEach(el => el.style.display = 'none');
+        window.startQuotationTracking?.(q);
 
     } catch (e) {
         console.error('載入分享報價單詳情失敗:', e);
@@ -2342,3 +2343,9 @@ initWorkflow();
 document.querySelectorAll('.history-status').forEach(el => el.addEventListener('change', loadHistory));
 
 initShareProtection();
+
+document.getElementById('btn-analytics').addEventListener('click', () => {
+    const url = new URL('analytics.html', location.href);
+    if (currentQuotationId) url.searchParams.set('quotation', currentQuotationId);
+    window.open(url.href, '_blank', 'noopener');
+});

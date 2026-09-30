@@ -1,0 +1,7 @@
+# Server secrets, analytics database, and generated artifacts
+quotation-analytics-config.php
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.env
+__pycache__/
